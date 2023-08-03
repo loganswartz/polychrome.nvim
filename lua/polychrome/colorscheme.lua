@@ -2,12 +2,29 @@ local color = require('polychrome.color')
 
 local M = {}
 
+local HL_NAME_MAPPING = {
+    fg = 'foreground',
+    bg = 'background',
+    gui = 'special',
+}
+
+local function get_hl_attr(hl, attr)
+    local ok, colors = pcall(vim.api.nvim_get_hl_by_name, hl, true)
+    local mapped_key = HL_NAME_MAPPING[attr] or attr
+    if not ok or colors == nil or colors[mapped_key] == nil then
+        return nil
+    end
+
+    return string.format("#%06x", colors[mapped_key])
+end
+
 ---@class Group
 ---@field is_highlight_group true
 ---@field name string
+---@field get_colorscheme fun(): Colorscheme?
 ---@field new fun(self: Group, name: string, obj: table?): Group
 ---@field __call fun(self: Group, attrs: table)
----@field check_link fun(self: Group): Group?|string
+---@field get_link fun(self: Group): Group|string|nil
 ---@field to_definition_map fun(self: Group): table
 ---@field fg Color?
 ---@field bg Color?
@@ -16,6 +33,9 @@ local M = {}
 ---@type Group
 M.Group = { ---@diagnostic disable-line: missing-fields
     is_highlight_group = true,
+    get_colorscheme = function()
+        return nil
+    end,
 
     new = function(self, name, obj)
         obj = obj or {}
@@ -26,37 +46,33 @@ M.Group = { ---@diagnostic disable-line: missing-fields
     end,
 
     __call = function(table, attrs)
+        if vim.tbl_count(attrs) == 0 then
+            print("Warning: Highlight group '" .. table.name .. "' has an empty attribute table.")
+        end
+
         for key, value in pairs(attrs) do
             rawset(table, key, value)
         end
     end,
 
-    check_link = function(self)
-        local link = self[1]
-        if link == nil then
-            return nil
+    __index = function(self, key)
+        -- check link for attributes if present
+        if HL_NAME_MAPPING[key] ~= nil then
+            local link = getmetatable(self).get_link(self)
+            if link then
+                return link[key]
+            end
         end
 
-        if link.is_highlight_group then
-            return link.name
-        else -- the link is a raw string
-            return link
-        end
+        return getmetatable(self)[key]
     end,
 
-    -- TODO: fix stack overflows when using this in M.Group.__index
-    get_link_value = function(self, key)
-        local link = self:check_link()
-        if not link then
-            return nil
-        end
+    get_link = function(self)
+        return self[1]
+    end,
 
-        local ok, colors = pcall(vim.api.nvim_get_hl_by_name, link, true)
-        if not ok or colors == nil or colors[key] == nil then
-            return nil
-        end
-
-        return string.format("#%06x", colors[key])
+    lookup_hl = function(self, key)
+        return get_hl_attr(self:get_link(), key)
     end,
 
     ---@see docs :h nvim_set_hl
@@ -73,12 +89,14 @@ M.Group = { ---@diagnostic disable-line: missing-fields
             map[self.gui] = true
         end
 
-        map.link = self:check_link()
+        local link = self:get_link()
+        if link then
+            map.link = type(link) == "string" and link or link.name
+        end
 
         return map
     end,
 }
-M.Group.__index = M.Group
 
 ---@class Colorscheme
 ---@field name string
@@ -113,6 +131,11 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
             end
 
             local group = M.Group:new(group_name)
+            -- Allow the group to access the colorscheme context
+            group.get_colorscheme = function()
+                return colorscheme
+            end
+            -- register the group to the scheme
             rawset(colorscheme.groups, group_name, group)
 
             return group

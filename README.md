@@ -62,15 +62,3 @@ the most common groups:
 # show all highlight groups in your current (neo)vim session
 :so $VIMRUNTIME/syntax/hitest.vim
 ```
-
-## Known issues
-
-Trying to use an attribute of a color that itself is linked to another color
-currently doesn't work. Example:
-
-```lua
-diffAdded { fg = '#00ff00' }
-DiffAdd { diffAdded }
-
-GitSignsAdd { fg = DiffAdd.fg } -- doesn't work
-```
