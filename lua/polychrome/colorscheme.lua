@@ -171,6 +171,10 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
         -- run the user colorscheme definition, which will update the colorscheme in-place
         definition(register_group)
 
+        if POLYCHROME_EDITING ~= nil then
+            POLYCHROME_EDITING = colorscheme
+        end
+
         return colorscheme
     end,
 
