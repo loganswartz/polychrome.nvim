@@ -44,6 +44,26 @@ Colorscheme:define('mytheme', function ()
 end):apply()
 ```
 
+### Live Preview
+
+You can turn on a live preview of your colorscheme via the `:StartEditing`
+command, or `require('polychrome').StartPreview()` from a Lua context. Running
+this command does the following:
+
+  1. Runs the contents of the current buffer, and reapplies any colorscheme
+     defined anywhere within it (even via `require`).
+  2. Get the names of all active highlight groups, and applies those groups to
+     all literal strings in the current buffer matching those names (ie. all
+     occurences of `Comment` in the buffer will be highlighted with the
+     "Comment" highlight group)
+
+`StartEditing()` registers these actions via autocmd (specifically
+`TextChanged`, `TextChangedI`, `TextChangedP`, and `TextChangedT`), and
+throttles reloads to every 500ms by default, shared across the autocommands.
+
+You can deactivate the live editing mode with `:StopEditing`, or
+`require('polychrome').StopPreview()` from a Lua context.
+
 ## Finding highlight groups
 
 There isn't a single authoritative source for all the most common highlight

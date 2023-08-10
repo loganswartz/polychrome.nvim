@@ -56,4 +56,71 @@ function M.clamp(value, bottom, top)
     return math.max(math.min(value, top or 255), bottom or 0)
 end
 
+--- Adapted from https://github.com/runiq/neovim-throttle-debounce/blob/5247b097df15016ab31db672b77ec4938bb9cbfd/lua/throttle-debounce/init.lua#L3-L39
+---
+--- Throttles a function on the leading edge. Automatically `schedule_wrap()`s.
+--- `timer:close()` at the end or you will leak memory!
+---
+---@generic F : function
+---@param fn `F` Function to throttle
+---@param ms number Timeout in ms
+---@return (F, uv_timer_t|nil) throttled function and timer. Remember to call
+function M.throttle(fn, ms)
+    vim.validate({
+        fn = { fn, "f" },
+        ms = {
+            ms,
+            function(inner_ms)
+                return type(inner_ms) == "number" and inner_ms > 0
+            end,
+            "number > 0",
+        },
+    })
+
+    local timer = vim.loop.new_timer()
+    local throttled = false
+
+    local function wrapper(...)
+        if throttled then
+            return
+        end
+
+        throttled = true
+        timer:start(ms, 0, function()
+            throttled = false
+        end)
+        pcall(vim.schedule_wrap(fn), select(1, ...))
+    end
+
+    return wrapper, timer
+end
+
+--- Read the contents of the current buffer
+function M.read_buffer(bufnr)
+    local content = vim.api.nvim_buf_get_lines(bufnr or 0, 0, vim.api.nvim_buf_line_count(0), false)
+    return table.concat(content, "\n")
+end
+
+--- Escape a string to match literally in a regex
+---@param s string
+function M.regex_escape(s)
+    local matches =
+    {
+        ["^"]  = [=[\^]=],
+        ["$"]  = [=[\$]=],
+        ["("]  = [=[\(]=],
+        [")"]  = [=[\)]=],
+        ["%"]  = [=[\%]=],
+        ["."]  = [=[\.]=],
+        ["["]  = [=[\[]=],
+        ["]"]  = [=[\]]=],
+        ["*"]  = [=[\*]=],
+        ["+"]  = [=[\+]=],
+        ["-"]  = [=[\-]=],
+        ["?"]  = [=[\?]=],
+        ["\0"] = [=[\z]=],
+    }
+    return s:gsub(".", matches)
+end
+
 return M
