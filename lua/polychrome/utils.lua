@@ -101,26 +101,18 @@ function M.read_buffer(bufnr)
     return table.concat(content, "\n")
 end
 
---- Escape a string to match literally in a regex
+--- Escape a string to match literally in a vim regex
 ---@param s string
-function M.regex_escape(s)
-    local matches =
-    {
-        ["^"]  = [=[\^]=],
-        ["$"]  = [=[\$]=],
-        ["("]  = [=[\(]=],
-        [")"]  = [=[\)]=],
-        ["%"]  = [=[\%]=],
-        ["."]  = [=[\.]=],
-        ["["]  = [=[\[]=],
-        ["]"]  = [=[\]]=],
-        ["*"]  = [=[\*]=],
-        ["+"]  = [=[\+]=],
-        ["-"]  = [=[\-]=],
-        ["?"]  = [=[\?]=],
-        ["\0"] = [=[\z]=],
-    }
-    return s:gsub(".", matches)
+---@param prefix string|nil
+function M.escape(s, prefix)
+    prefix = prefix or "%"
+    local special = { "^", "$", "(", ")", "%", ".", "[", "]", "*", "+", "-", "?" }
+
+    -- generate a table like { char = prefix .. char }
+    local mapped = vim.tbl_map(function(c) return { [c] = prefix .. c } end, special)
+    local flattened = vim.tbl_flatten(mapped)
+
+    return s:gsub(".", flattened)
 end
 
 return M

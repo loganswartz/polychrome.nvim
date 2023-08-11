@@ -16,7 +16,21 @@ local function get_highlight_name_pattern(name)
         TRAILING_PATTERN = [[\([[:space:]"'\(\{]\)\@=]]
     end
 
-    return LEADING_PATTERN .. utils.regex_escape(name) .. TRAILING_PATTERN
+    return LEADING_PATTERN .. utils.escape(name, [[/]]) .. TRAILING_PATTERN
+end
+
+local function get_highlight_name_pattern_lua(name)
+    -- whitespace or quote mark directly before start of name
+    local LEADING_PATTERN = [=[[%s"']]=]
+    -- whitespace, period, open paren, or open curly brace directly after name
+    local TRAILING_PATTERN = [=[[%s"'%.%(%{]]=]
+
+    if name:find('@') then
+        -- exclude period from treesitter groups (ex. to avoid applying `@string` to the first half of `@string.delimiter`)
+        TRAILING_PATTERN = [=[[%s"'%(%{]]=]
+    end
+
+    return LEADING_PATTERN .. utils.escape(name) .. TRAILING_PATTERN
 end
 
 local function get_highlight_groups()
@@ -42,17 +56,23 @@ local EDITING_BUF_NUMBER = nil
 
 --- Highlight all currently-defined highlight groups
 local function apply_highlights()
-    for name, _ in pairs(get_highlight_groups()) do
-        local ok, match = pcall(
-            vim.fn.matchadd,
-            name,
-            get_highlight_name_pattern(name),
-            nil,
-            -1,
-            { window = EDITING_WIN_NUMBER }
-        )
-        if ok then
-            table.insert(MATCH_IDS, match)
+    local groups = get_highlight_groups()
+    local buffer = utils.read_buffer(EDITING_BUF_NUMBER)
+
+    for name, _ in pairs(groups) do
+        -- only add a match if there's a result in the buffer
+        if buffer:find(get_highlight_name_pattern_lua(name)) then
+            local ok, match = pcall(
+                vim.fn.matchadd,
+                name,
+                get_highlight_name_pattern(name),
+                nil,
+                -1,
+                { window = EDITING_WIN_NUMBER }
+            )
+            if ok then
+                table.insert(MATCH_IDS, match)
+            end
         end
     end
 end
