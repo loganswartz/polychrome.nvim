@@ -2,77 +2,33 @@ local utils = require('polychrome.utils')
 
 local M = {}
 
-M.HIGHLIGHT_GROUP_NAME = 'polychrome_edit_highlights'
+local HL_NAMESPACE = nil
+--- The ID of the augroup for our autocommands
+local AUGROUP_ID = nil
+--- Number of the buffer the live preview was activated on
+local BUFNR = nil
 
----@param name string
-local function get_highlight_name_pattern(name)
-    -- whitespace or quote mark directly before start of name
-    local LEADING_PATTERN = [[\([[:space:]"']\)\@<=]]
-    -- whitespace, period, open paren, or open curly brace directly after name
-    local TRAILING_PATTERN = [[\([[:space:]"'\.\(\{]\)\@=]]
-
-    if name:find('@') then
-        -- exclude period from treesitter groups (ex. to avoid applying `@string` to the first half of `@string.delimiter`)
-        TRAILING_PATTERN = [[\([[:space:]"'\(\{]\)\@=]]
-    end
-
-    return LEADING_PATTERN .. utils.escape(name, [[/]]) .. TRAILING_PATTERN
-end
-
-local function get_highlight_name_pattern_lua(name)
-    -- whitespace or quote mark directly before start of name
-    local LEADING_PATTERN = [=[[%s"']]=]
-    -- whitespace, period, open paren, or open curly brace directly after name
-    local TRAILING_PATTERN = [=[[%s"'%.%(%{]]=]
-
-    if name:find('@') then
-        -- exclude period from treesitter groups (ex. to avoid applying `@string` to the first half of `@string.delimiter`)
-        TRAILING_PATTERN = [=[[%s"'%(%{]]=]
-    end
-
-    return LEADING_PATTERN .. utils.escape(name) .. TRAILING_PATTERN
-end
-
-local function get_highlight_groups()
-    if vim.api.nvim_get_hl ~= nil then
-        return vim.api.nvim_get_hl(0, {})
-    else
-        return vim.api.nvim__get_hl_defs(0)
-    end
-end
-
-local MATCH_IDS = {}
+-- whitespace or quote mark directly before start of name
+local _LEADING_PATTERN = [=[[%s"']]=]
+-- whitespace, period, open paren, or open curly brace directly after name
+local _TRAILING_PATTERN = [=[[%s"'%.%(%{]]=]
+-- allowed characters in hl group names are `@`, `.`, `a-Z`, and `0-9`
+local _CAPTURE = [[([%w%d@%.]+)]]
+local HL_NAME_REGEX = _LEADING_PATTERN .. _CAPTURE .. _TRAILING_PATTERN
 
 local function clear_highlights()
-    for _, id in ipairs(MATCH_IDS) do
-        pcall(vim.fn.matchdelete, id)
-    end
+    pcall(vim.api.nvim_buf_clear_namespace, BUFNR, HL_NAMESPACE, 0, -1)
 end
-
---- What window was the live preview activated on?
-local EDITING_WIN_NUMBER = nil
---- What buffer was the live preview activated on?
-local EDITING_BUF_NUMBER = nil
 
 --- Highlight all currently-defined highlight groups
 local function apply_highlights()
-    local groups = get_highlight_groups()
-    local buffer = utils.read_buffer(EDITING_BUF_NUMBER)
+    local groups = utils.get_highlight_groups()
+    local lines = vim.api.nvim_buf_get_lines(BUFNR or 0, 0, -1, false)
 
-    for name, _ in pairs(groups) do
-        -- only add a match if there's a result in the buffer
-        if buffer:find(get_highlight_name_pattern_lua(name)) then
-            local ok, match = pcall(
-                vim.fn.matchadd,
-                name,
-                get_highlight_name_pattern(name),
-                nil,
-                -1,
-                { window = EDITING_WIN_NUMBER }
-            )
-            if ok then
-                table.insert(MATCH_IDS, match)
-            end
+    for idx, line in ipairs(lines) do
+        local start, _end, match = line:find(HL_NAME_REGEX)
+        if match and groups[match] ~= nil then
+            vim.api.nvim_buf_add_highlight(BUFNR, HL_NAMESPACE, match, idx - 1, start or 0, _end - 1 or -1)
         end
     end
 end
@@ -88,7 +44,7 @@ local function apply_colorscheme()
 
     -- load current file
     POLYCHROME_EDITING = true
-    local definition, result = load(utils.read_buffer(EDITING_BUF_NUMBER))
+    local definition, result = load(utils.read_buffer(BUFNR))
     if not definition then
         print(result)
         return -- not runnable
@@ -114,57 +70,44 @@ local function apply_colorscheme()
     end
 end
 
-local function start_preview()
+local function apply_preview()
     apply_colorscheme()
     apply_highlights()
 end
 
-local EDITING_AUGROUP_ID = nil
-local THROTTLED_FUNC = nil
----@type uv_timer_t|nil
-local THROTTLE_TIMER = nil
-
-local function cleanup_timer()
-    pcall(function() THROTTLE_TIMER:close() end)
-    THROTTLE_TIMER = nil
-    THROTTLED_FUNC = nil
+local function clear_preview()
+    clear_highlights()
+    pcall(vim.api.nvim_del_augroup_by_id, AUGROUP_ID)
 end
 
 --- Activate a live preview of the colorscheme.
 ---@param throttle_ms number|nil
 function M.StartPreview(throttle_ms)
     -- start with a clean slate
-    cleanup_timer()
-    clear_highlights()
-
-    -- throttle highlight updates for performance
-    THROTTLED_FUNC, THROTTLE_TIMER = utils.throttle(start_preview, throttle_ms or 500)
+    clear_preview()
 
     -- register the live preview
-    EDITING_BUF_NUMBER = vim.fn.bufnr()
-    EDITING_WIN_NUMBER = vim.fn.winnr()
-    EDITING_AUGROUP_ID = vim.api.nvim_create_augroup('polychrome', { clear = true })
+    BUFNR = vim.fn.bufnr()
+    HL_NAMESPACE = vim.api.nvim_create_namespace('polychrome_preview')
+    AUGROUP_ID = vim.api.nvim_create_augroup('polychrome', { clear = true })
     vim.api.nvim_create_autocmd({
         'TextChanged',
         'TextChangedI',
         'TextChangedP',
         'TextChangedT',
     }, {
-        buffer = EDITING_BUF_NUMBER,
-        group = EDITING_AUGROUP_ID,
-        callback = THROTTLED_FUNC,
+        buffer = BUFNR,
+        group = AUGROUP_ID,
+        callback = apply_preview,
     })
 
     -- immediately apply once
-    start_preview()
+    apply_preview()
 end
 
 --- Deactivate the live preview of the colorscheme.
 function M.StopPreview()
-    cleanup_timer()
-    clear_highlights()
-
-    pcall(vim.api.nvim_del_augroup_by_id, EDITING_AUGROUP_ID)
+    clear_preview()
 end
 
 return M

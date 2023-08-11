@@ -97,7 +97,7 @@ end
 
 --- Read the contents of the current buffer
 function M.read_buffer(bufnr)
-    local content = vim.api.nvim_buf_get_lines(bufnr or 0, 0, vim.api.nvim_buf_line_count(0), false)
+    local content = vim.api.nvim_buf_get_lines(bufnr or 0, 0, -1, false)
     return table.concat(content, "\n")
 end
 
@@ -113,6 +113,14 @@ function M.escape(s, prefix)
     local flattened = vim.tbl_flatten(mapped)
 
     return s:gsub(".", flattened)
+end
+
+function M.get_highlight_groups()
+    if vim.api.nvim_get_hl ~= nil then
+        return vim.api.nvim_get_hl(0, {})
+    else
+        return vim.api.nvim__get_hl_defs(0)
+    end
 end
 
 return M
