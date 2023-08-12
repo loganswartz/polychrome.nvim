@@ -25,6 +25,8 @@ end
 ---@field new fun(self: Group, name: string, obj: table?): Group
 ---@field __call fun(self: Group, attrs: table)
 ---@field get_link fun(self: Group): Group|string|nil
+---@field has_combo_link fun(self: Group): boolean
+---@field lookup_hl fun(self: Group, key: string): string|nil
 ---@field to_definition_map fun(self: Group): table
 ---@field fg Color?
 ---@field bg Color?
@@ -75,9 +77,27 @@ M.Group = { ---@diagnostic disable-line: missing-fields
         return get_hl_attr(self:get_link(), key)
     end,
 
+    has_combo_link = function(self)
+        -- check if
+        local present_attrs = vim.tbl_map(function(attr) return rawget(self, attr) ~= nil end, { 'fg', 'bg', 'gui' })
+        local has_another_attr = vim.tbl_contains(present_attrs, true)
+        return self:get_link() ~= nil and has_another_attr
+    end,
+
     ---@see docs :h nvim_set_hl
     to_definition_map = function(self)
         local map = {}
+
+        local link = self:get_link()
+        if link then
+            if self:has_combo_link() then -- unroll the link and pass all the properties directly
+                map.fg = self:lookup_hl('fg')
+                map.bg = self:lookup_hl('bg')
+                map.gui = self:lookup_hl('gui')
+            else -- create a normal link
+                map.link = type(link) == "string" and link or link.name
+            end
+        end
 
         for _, prop in ipairs({ 'fg', 'bg' }) do
             if self[prop] ~= nil then
@@ -87,11 +107,6 @@ M.Group = { ---@diagnostic disable-line: missing-fields
 
         if self.gui ~= nil then
             map[self.gui] = true
-        end
-
-        local link = self:get_link()
-        if link then
-            map.link = type(link) == "string" and link or link.name
         end
 
         return map
