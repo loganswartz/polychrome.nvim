@@ -82,3 +82,12 @@ the most common groups:
 # show all highlight groups in your current (neo)vim session
 :so $VIMRUNTIME/syntax/hitest.vim
 ```
+
+## Misc
+
+Currently, converting colors from a larger color gamut to a smaller one doesn't
+do any intelligent chroma clipping, so ex. colors outside the range of sRGB but
+specified in oklab, will not convert properly to the closest sRGB value
+(perceptually). This is something I'd like to handle eventually, but I haven't
+yet figured out the best way to organize the logic for that in a maintainable
+way.

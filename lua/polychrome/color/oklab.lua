@@ -1,7 +1,20 @@
 local Color = require('polychrome.color.base').Color
 local utils = require('polychrome.utils')
+local matrix = require('polychrome.matrix')
 
 local M = {}
+
+-- https://bottosson.github.io/posts/oklab/#converting-from-xyz-to-oklab
+M.Oklab_to_XYZ_M1 = matrix({
+    { 0.8189330101, 0.3618667424, -0.1288597137 },
+    { 0.0329845436, 0.9293118715, 0.0361456387 },
+    { 0.0482003018, 0.2643662691, 0.6338517070 }
+})
+M.Oklab_to_XYZ_M2 = matrix({
+    { 0.2104542553, 0.7936177850,  -0.0040720468 },
+    { 1.9779984951, -2.4285922050, 0.4505937099 },
+    { 0.0259040371, 0.7827717662,  -0.8086757660 }
+})
 
 ---@class Oklab : Color
 ---@field __type 'oklab'
@@ -10,10 +23,6 @@ local M = {}
 ---@field b number The "b" value of the color [?]
 ---@field new fun(self: Oklab, obj: table?): Oklab Create a new instance of the class.
 ---@overload fun(self: Oklab, ...: number): Oklab Create a new instance of the class.
----@field to_Oklch fun(self: Oklab): Oklch Convert the color to Oklch.
----@field to_lRGB fun(self: Oklab): lRGB Convert the color to lRGB.
----@field to_RGB fun(self: Oklab): RGB Convert the color to RGB.
----@field to_HSL fun(self: Oklab): HSL Convert the color to HSL.
 
 ---@type Oklab
 M.Oklab = { ---@diagnostic disable-line: missing-fields
@@ -30,47 +39,60 @@ M.Oklab = { ---@diagnostic disable-line: missing-fields
         })
     end,
 
-    to_Oklch = function(self)
-        local Oklch = require('polychrome.color.oklch').Oklch
-        return Oklch:new({
-            L = self.L,
-            c = math.sqrt(math.pow(self.a, 2) + math.pow(self.b, 2)),
-            h = utils.clamp(math.atan2(self.b, self.a) * 180 / math.pi, 0, 360),
-        })
-    end,
-
-    to_lRGB = function(self)
-        local l_ = self.L + 0.3963377774 * self.a + 0.2158037573 * self.b
-        local m_ = self.L - 0.1055613458 * self.a - 0.0638541728 * self.b
-        local s_ = self.L - 0.0894841775 * self.a - 1.2914855480 * self.b
-
-        local l = math.pow(l_, 3)
-        local m = math.pow(m_, 3)
-        local s = math.pow(s_, 3)
-
-        local lr = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
-        local lg = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
-        local lb = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
-
-        local lRGB = require('polychrome.color.lrgb').lRGB
-        return lRGB:new({
-            lr = lr,
-            lg = lg,
-            lb = lb,
-        })
-    end,
-
-    to_RGB = function(self)
-        return self:to_lRGB():to_RGB()
-    end,
-
-    to_HSL = function(self)
-        return self:to_RGB():to_HSL()
+    get_parent_gamut = function()
+        return require('polychrome.color.ciexyz').CIEXYZ
     end,
 
     ---@param self Oklab
-    to_hex = function(self)
-        return self:to_RGB():to_hex()
+    to_parent = function(self)
+        local lab = matrix({
+            { self.L },
+            { self.a },
+            { self.b },
+        })
+
+        -- transform to l'm's'
+        local _lms = M.Oklab_to_XYZ_M2:invert():mul(lab):transpose()[1]
+
+        -- cube each individual value
+        local lms = matrix({
+            { _lms[1] ^ 3 },
+            { _lms[2] ^ 3 },
+            { _lms[3] ^ 3 },
+        })
+
+        -- map
+        local xyz = M.Oklab_to_XYZ_M1:invert():mul(lms):transpose()[1]
+
+        local CIEXYZ = require('polychrome.color.ciexyz').CIEXYZ
+        return CIEXYZ:new({
+            X = xyz[1],
+            Y = xyz[2],
+            Z = xyz[3],
+        })
+    end,
+
+    ---@param self Oklab
+    ---@param parent CIEXYZ
+    from_parent = function(self, parent)
+        -- convert to cone response
+        local lms = M.Oklab_to_XYZ_M1:mul(matrix({
+            { parent.X },
+            { parent.Y },
+            { parent.Z },
+        }))
+
+        -- cube root each individual value
+        local _lms = matrix({ vim.tbl_map(utils.nroot, lms:transpose()[1]) }):transpose()
+
+        -- transform to lab coordinates
+        local lab = M.Oklab_to_XYZ_M2:mul(_lms):transpose()
+
+        return self:new({
+            L = lab[1][1],
+            a = lab[1][2],
+            b = lab[1][3],
+        })
     end,
 }
 M.Oklab.__index = M.Oklab

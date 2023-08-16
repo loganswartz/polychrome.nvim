@@ -11,10 +11,6 @@ local M = {}
 ---@field new fun(self: HSL, obj: table?): HSL Create a new instance of the class.
 ---@overload fun(self: HSL, ...: number): HSL Create a new instance of the class.
 ---@field hue_to_RGB_value fun(p: number, q: number, t: number): number Convert a hue to an RGB component value
----@field to_RGB fun(self: HSL): RGB Convert the color to gamma-corrected RGB.
----@field to_lRGB fun(self: HSL): lRGB Convert the color to linear RGB.
----@field to_Oklab fun(self: HSL): Oklab Convert the color to Oklab.
----@field to_Oklch fun(self: HSL): Oklch Convert the color to Oklch.
 
 ---@type HSL
 M.HSL = { ---@diagnostic disable-line: missing-fields
@@ -46,7 +42,12 @@ M.HSL = { ---@diagnostic disable-line: missing-fields
         return p
     end,
 
-    to_RGB = function(self)
+    get_parent_gamut = function(self)
+        return require('polychrome.color.rgb').RGB
+    end,
+
+    ---@param self HSL
+    to_parent = function(self)
         local r, g, b
 
         -- scale to range [0-1]
@@ -74,25 +75,63 @@ M.HSL = { ---@diagnostic disable-line: missing-fields
             b = self.hue_to_RGB_value(p, q, h - 1 / 3)
         end
 
-        local RGB = require('polychrome.color.rgb').RGB
-        return RGB:new({ r = utils.round(r * 255), g = utils.round(g * 255), b = utils.round(b * 255) })
-    end,
-
-    to_lRGB = function(self)
-        return self:to_RGB():to_lRGB()
-    end,
-
-    to_Oklab = function(self)
-        return self:to_lRGB():to_Oklab()
-    end,
-
-    to_Oklch = function(self)
-        return self:to_Oklab():to_Oklch()
+        return self:get_parent_gamut():new({
+            r = utils.round(r * 255),
+            g = utils.round(g * 255),
+            b = utils.round(b * 255),
+        })
     end,
 
     ---@param self HSL
-    to_hex = function(self)
-        return self:to_RGB():to_hex()
+    ---@param parent RGB
+    from_parent = function(self, parent)
+        -- Make r, g, and b fractions of 1
+        local r = parent.r / 255
+        local g = parent.g / 255
+        local b = parent.b / 255
+
+        -- Find greatest and smallest channel values
+        local cmin = math.min(r, g, b)
+        local cmax = math.max(r, g, b)
+        local delta = cmax - cmin
+
+        -- calculate hue
+        local h = 0
+
+        if (delta == 0) then
+            h = 0;
+        elseif (cmax == r) then
+            h = ((g - b) / delta) % 6
+        elseif (cmax == g) then
+            h = (b - r) / delta + 2
+        else
+            h = (r - g) / delta + 4
+        end
+
+        h = utils.round(h * 60);
+        -- Make negative hues positive behind 360°
+        if (h < 0) then
+            h = h + 360;
+        end
+
+        -- Calculate lightness
+        local l = (cmax + cmin) / 2;
+
+        -- Calculate saturation
+        local s = 0
+        if (delta ~= 0) then
+            s = delta / (1 - math.abs(2 * l - 1))
+        end
+
+        -- Multiply l and s by 100
+        s = math.abs(s * 100)
+        l = math.abs(l * 100)
+
+        return self:new({
+            h = h,
+            s = s,
+            l = l,
+        })
     end,
 }
 M.HSL.__index = M.HSL

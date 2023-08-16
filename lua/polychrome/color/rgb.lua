@@ -1,4 +1,3 @@
-local math = require('math')
 local bit = require('bit')
 
 local Color = require('polychrome.color.base').Color
@@ -14,11 +13,7 @@ local M = {}
 ---@field new fun(self: RGB, obj: table?): RGB Create a new instance of the class.
 ---@overload fun(self: RGB, ...: number): RGB Create a new instance of the class.
 ---@field from_hex fun(input: string): RGB Create an RGB instance from a hex string.
----@field to_hex fun(self: RGB): string Create a hex string representing the color.
----@field to_HSL fun(self: RGB): HSL Convert the color to HSL.
----@field to_lRGB fun(self: RGB): lRGB Convert the color to linear RGB.
----@field to_Oklab fun(self: RGB): Oklab Convert the color to Oklab.
----@field to_Oklch fun(self: RGB): Oklch Convert the color to Oklch.
+---@field hex fun(self: RGB): string Create a hex string representing the color.
 
 ---@type RGB
 M.RGB = { ---@diagnostic disable-line: missing-fields
@@ -56,63 +51,17 @@ M.RGB = { ---@diagnostic disable-line: missing-fields
     end,
 
     ---@param self RGB
-    to_hex = function(self)
+    hex = function(self)
         return "#" .. ("%02x"):format(self.r) .. ("%02x"):format(self.g) .. ("%02x"):format(self.b)
     end,
 
-    to_HSL = function(self)
-        -- Make r, g, and b fractions of 1
-        local r = self.r / 255
-        local g = self.g / 255
-        local b = self.b / 255
-
-        -- Find greatest and smallest channel values
-        local cmin = math.min(r, g, b)
-        local cmax = math.max(r, g, b)
-        local delta = cmax - cmin
-
-        -- calculate hue
-        local h = 0
-
-        if (delta == 0) then
-            h = 0;
-        elseif (cmax == r) then
-            h = ((g - b) / delta) % 6
-        elseif (cmax == g) then
-            h = (b - r) / delta + 2
-        else
-            h = (r - g) / delta + 4
-        end
-
-        h = utils.round(h * 60);
-        -- Make negative hues positive behind 360°
-        if (h < 0) then
-            h = h + 360;
-        end
-
-        -- Calculate lightness
-        local l = (cmax + cmin) / 2;
-
-        -- Calculate saturation
-        local s = 0
-        if (delta ~= 0) then
-            s = delta / (1 - math.abs(2 * l - 1))
-        end
-
-        -- Multiply l and s by 100
-        s = math.abs(s * 100)
-        l = math.abs(l * 100)
-
-        local HSL = require('polychrome.color.hsl').HSL
-        return HSL:new({
-            h = h,
-            s = s,
-            l = l,
-        })
+    get_parent_gamut = function(self)
+        return require('polychrome.color.lrgb').lRGB
     end,
 
-    to_lRGB = function(self)
-        local lRGB = require('polychrome.color.lRGB').lRGB
+    ---@param self RGB
+    to_parent = function(self)
+        local lRGB = require('polychrome.color.lrgb').lRGB
         return lRGB:new({
             lr = utils.gamma_to_linear(self.r / 255),
             lg = utils.gamma_to_linear(self.g / 255),
@@ -120,12 +69,14 @@ M.RGB = { ---@diagnostic disable-line: missing-fields
         })
     end,
 
-    to_Oklab = function(self)
-        return self:to_lRGB():to_Oklab()
-    end,
-
-    to_Oklch = function(self)
-        return self:to_Oklab():to_Oklch()
+    ---@param self RGB
+    ---@param parent lRGB
+    from_parent = function(self, parent)
+        return self:new({
+            r = utils.round(utils.clamp(utils.linear_to_gamma(parent.lr) * 255)),
+            g = utils.round(utils.clamp(utils.linear_to_gamma(parent.lg) * 255)),
+            b = utils.round(utils.clamp(utils.linear_to_gamma(parent.lb) * 255)),
+        })
     end,
 }
 M.RGB.__index = M.RGB

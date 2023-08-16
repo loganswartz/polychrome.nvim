@@ -33,11 +33,14 @@ function M.linear_to_gamma(x)
     end
 end
 
---- Take the cube root of a number.
----@param n number
+--- Take the root of a number (default: cube root).
+---@param number number
 ---@return number
-function M.cuberoot(n)
-    return math.pow(n, (1.0 / 3.0))
+function M.nroot(number, root)
+    -- any rooted negative number returns NaN, even if the root is a whole
+    -- odd number. We can preserve the sign to restore the proper behavior.
+    local sign = number >= 0 and 1 or -1
+    return math.pow(math.abs(number), (1.0 / (root or 3.0))) * sign
 end
 
 --- Round a number to the nearest whole number.
@@ -121,6 +124,44 @@ function M.get_highlight_groups()
     else
         return vim.api.nvim__get_hl_defs(0)
     end
+end
+
+---@param table table
+---@param value any
+---@param comparison (fun(a: any, b: any): boolean)|nil
+---@return number|string|nil
+function M.find(table, value, comparison)
+    comparison = comparison or function(a, b) return a == b end
+
+    for k, v in pairs(table) do
+        if comparison(v, value) then
+            return k
+        end
+    end
+
+    return nil
+end
+
+function M.slice(list, start, _end, step)
+    start = start ~= nil and start or 1
+    _end = _end ~= nil and _end or #list
+    step = step ~= nil and step or 1
+
+    local new = {}
+    for i = start, _end, step do
+        table.insert(new, list[i])
+    end
+
+    return new
+end
+
+function M.reverse(list)
+    local new = {}
+    for i = #list, 1, -1 do
+        table.insert(new, list[i])
+    end
+
+    return new
 end
 
 return M

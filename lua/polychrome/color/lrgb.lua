@@ -1,7 +1,16 @@
 local Color = require('polychrome.color.base').Color
+local matrix = require('polychrome.matrix')
 local utils = require('polychrome.utils')
 
 local M = {}
+
+-- https://en.wikipedia.org/wiki/SRGB#From_CIE_XYZ_to_sRGB
+-- Actually use values from https://en.wikipedia.org/wiki/SRGB#sYCC, which are higher precision
+M.CIEXYZ_to_lRGB = matrix({
+    { 3.2406255,  -1.5372080, -0.4986286 },
+    { -0.9689307, 1.8757561,  0.0415175 },
+    { 0.0557101,  -0.2040211, 1.0569959 },
+})
 
 ---@class lRGB : Color
 ---@field __type 'lrgb'
@@ -10,10 +19,6 @@ local M = {}
 ---@field lb number The blue value of the color [0-1]
 ---@field new fun(self: lRGB, obj: table?): lRGB Create a new instance of the class.
 ---@overload fun(self: lRGB, ...: number): lRGB Create a new instance of the class.
----@field to_RGB fun(self: lRGB): RGB Convert the color to gamma-corrected RGB.
----@field to_HSL fun(self: lRGB): HSL Convert the color to HSL.
----@field to_Oklab fun(self: lRGB): Oklab Convert the color to Oklab.
----@field to_Oklch fun(self: lRGB): Oklch Convert the color to Oklch.
 
 ---@type lRGB
 M.lRGB = { ---@diagnostic disable-line: missing-fields
@@ -30,43 +35,42 @@ M.lRGB = { ---@diagnostic disable-line: missing-fields
         })
     end,
 
-    to_RGB = function(self)
-        local RGB = require('polychrome.color.rgb').RGB
-        return RGB:new({
-            r = utils.round(utils.clamp(utils.linear_to_gamma(self.lr) * 255)),
-            g = utils.round(utils.clamp(utils.linear_to_gamma(self.lg) * 255)),
-            b = utils.round(utils.clamp(utils.linear_to_gamma(self.lb) * 255)),
-        })
-    end,
-
-    to_Oklab = function(self)
-        local l = 0.4122214708 * self.lr + 0.5363325363 * self.lg + 0.0514459929 * self.lb
-        local m = 0.2119034982 * self.lr + 0.6806995451 * self.lg + 0.1073969566 * self.lb
-        local s = 0.0883024619 * self.lr + 0.2817188376 * self.lg + 0.6299787005 * self.lb
-
-        local l_ = utils.cuberoot(l)
-        local m_ = utils.cuberoot(m)
-        local s_ = utils.cuberoot(s)
-
-        local Oklab = require('polychrome.color.oklab').Oklab
-        return Oklab:new({
-            L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
-            a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
-            b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
-        })
-    end,
-
-    to_Oklch = function(self)
-        return self:to_Oklab():to_Oklch()
-    end,
-
-    to_HSL = function(self)
-        return self:to_RGB():to_HSL()
+    get_parent_gamut = function(self)
+        return require('polychrome.color.ciexyz').CIEXYZ
     end,
 
     ---@param self lRGB
-    to_hex = function(self)
-        return self:to_RGB():to_hex()
+    to_parent = function(self)
+        local rgb = matrix({
+            { self.lr },
+            { self.lg },
+            { self.lb },
+        })
+        local xyz = M.CIEXYZ_to_lRGB:invert():mul(rgb):transpose()[1]
+
+        return self:get_parent_gamut():new({
+            X = xyz[1],
+            Y = xyz[2],
+            Z = xyz[3],
+        })
+    end,
+
+    ---@param self lRGB
+    ---@param parent CIEXYZ
+    from_parent = function(self, parent)
+        local xyz = matrix({
+            { parent.X },
+            { parent.Y },
+            { parent.Z },
+        })
+
+        local rgb = M.CIEXYZ_to_lRGB:mul(xyz):transpose()[1]
+
+        return self:new({
+            lr = utils.clamp(rgb[1], 0, 1),
+            lg = utils.clamp(rgb[2], 0, 1),
+            lb = utils.clamp(rgb[3], 0, 1),
+        })
     end,
 }
 M.lRGB.__index = M.lRGB

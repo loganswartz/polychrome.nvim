@@ -10,6 +10,7 @@ M.lrgb = color.lRGB
 M.hsl = color.HSL
 M.oklab = color.Oklab
 M.oklch = color.Oklch
+M.ciexyz = color.CIEXYZ
 M.StartPreview = preview.StartPreview
 M.StopPreview = preview.StopPreview
 

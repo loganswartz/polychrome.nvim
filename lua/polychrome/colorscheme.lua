@@ -101,7 +101,7 @@ M.Group = { ---@diagnostic disable-line: missing-fields
 
         for _, prop in ipairs({ 'fg', 'bg' }) do
             if self[prop] ~= nil then
-                map[prop] = self[prop].is_color_object and self[prop]:to_hex() or self[prop]
+                map[prop] = self[prop].is_color_object and self[prop]:hex() or self[prop]
             end
         end
 
@@ -168,6 +168,8 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
             oklab = color.Oklab,
             Oklch = color.Oklch,
             oklch = color.Oklch,
+            CIEXYZ = color.CIEXYZ,
+            ciexyz = color.CIEXYZ,
             -- inject helper for group names that have special characters in them
             _ = register_group,
         }, {

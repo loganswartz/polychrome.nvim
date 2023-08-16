@@ -6,5 +6,6 @@ M.lRGB = require('polychrome.color.lrgb').lRGB
 M.HSL = require('polychrome.color.hsl').HSL
 M.Oklab = require('polychrome.color.oklab').Oklab
 M.Oklch = require('polychrome.color.oklch').Oklch
+M.CIEXYZ = require('polychrome.color.ciexyz').CIEXYZ
 
 return M

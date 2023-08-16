@@ -10,10 +10,6 @@ local M = {}
 ---@field h number The "hue" value of the color [0-360]
 ---@field new fun(self: Oklch, obj: table): Oklch Create a new instance of the class.
 ---@overload fun(self: Oklch, ...: number): Oklch Create a new instance of the class.
----@field to_Oklab fun(self: Oklch): Oklab Convert the color to Oklab.
----@field to_lRGB fun(self: Oklch): lRGB Convert the color to lRGB.
----@field to_RGB fun(self: Oklch): RGB Convert the color to RGB.
----@field to_HSL fun(self: Oklch): HSL Convert the color to HSL.
 
 ---@type Oklch
 M.Oklch = { ---@diagnostic disable-line: missing-fields
@@ -30,30 +26,27 @@ M.Oklch = { ---@diagnostic disable-line: missing-fields
         })
     end,
 
-    to_Oklab = function(self)
-        local Oklab = require('polychrome.color.oklab').Oklab
-        return Oklab:new({
+    get_parent_gamut = function(self)
+        return require('polychrome.color.oklab').Oklab
+    end,
+
+    ---@param self Oklch
+    to_parent = function(self)
+        return self:get_parent_gamut():new({
             L = self.L,
             a = self.c * math.cos(self.h * math.pi / 180),
             b = self.c * math.sin(self.h * math.pi / 180),
         })
     end,
 
-    to_lRGB = function(self)
-        return self:to_Oklab():to_lRGB()
-    end,
-
-    to_RGB = function(self)
-        return self:to_lRGB():to_RGB()
-    end,
-
-    to_HSL = function(self)
-        return self:to_RGB():to_HSL()
-    end,
-
     ---@param self Oklch
-    to_hex = function(self)
-        return self:to_RGB():to_hex()
+    ---@param parent Oklab
+    from_parent = function(self, parent)
+        return self:new({
+            L = parent.L,
+            c = math.sqrt(math.pow(parent.a, 2) + math.pow(parent.b, 2)),
+            h = utils.clamp(math.atan2(parent.b, parent.a) * 180 / math.pi, 0, 360),
+        })
     end,
 }
 M.Oklch.__index = M.Oklch
