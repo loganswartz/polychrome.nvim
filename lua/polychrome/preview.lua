@@ -9,15 +9,41 @@ local AUGROUP_ID = nil
 local BUFNR = nil
 
 -- whitespace or quote mark directly before start of name
-local _LEADING_PATTERN = [=[[%s"']]=]
+local _HL_NAME_LEADING_PATTERN = [=[[%s"']]=]
 -- whitespace, period, open paren, or open curly brace directly after name
-local _TRAILING_PATTERN = [=[[%s"'%.%(%{]]=]
+local _HL_NAME_TRAILING_PATTERN = [=[[%s"'%.%(%{]]=]
 -- allowed characters in hl group names are `@`, `.`, `a-Z`, and `0-9`
-local _CAPTURE = [[([%w%d@%.]+)]]
-local HL_NAME_REGEX = _LEADING_PATTERN .. _CAPTURE .. _TRAILING_PATTERN
+local _HL_NAME_CAPTURE = [[([%w%d@%.]+)]]
+local HL_NAME_REGEX = _HL_NAME_LEADING_PATTERN .. _HL_NAME_CAPTURE .. _HL_NAME_TRAILING_PATTERN
+
+local COLOR_REGEX = [[(%w+)%(([%d%.]+)%s*,%s*([%d%.]+)%s*,%s*([%d%.]+)%s*%)]]
 
 local function clear_highlights()
     pcall(vim.api.nvim_buf_clear_namespace, BUFNR, HL_NAMESPACE, 0, -1)
+end
+
+local function apply_hl_group_name_hl(groups, line_nr, line)
+    local start, _end, match = line:find(HL_NAME_REGEX)
+    if match and groups[match] ~= nil then
+        vim.api.nvim_buf_add_highlight(BUFNR, HL_NAMESPACE, match, line_nr - 1, start or 0, _end - 1 or -1)
+    end
+end
+
+local function apply_color_obj_hl(groups, line_nr, line)
+    local start, _end, name, a, b, c = line:find(COLOR_REGEX)
+
+    if start ~= nil then
+        name = string.lower(name)
+
+        local class = require('polychrome')[name]
+        if class.is_color_object then
+            local color = class(tonumber(a), tonumber(b), tonumber(c))
+            local hl_name = table.concat({ name, a, b, c }, '')
+
+            vim.api.nvim_set_hl(0, hl_name, { fg = 'black', bg = color:hex() })
+            vim.api.nvim_buf_add_highlight(BUFNR, HL_NAMESPACE, hl_name, line_nr - 1, start - 1, _end or -1)
+        end
+    end
 end
 
 --- Highlight all currently-defined highlight groups
@@ -26,10 +52,8 @@ local function apply_highlights()
     local lines = vim.api.nvim_buf_get_lines(BUFNR or 0, 0, -1, false)
 
     for idx, line in ipairs(lines) do
-        local start, _end, match = line:find(HL_NAME_REGEX)
-        if match and groups[match] ~= nil then
-            vim.api.nvim_buf_add_highlight(BUFNR, HL_NAMESPACE, match, idx - 1, start or 0, _end - 1 or -1)
-        end
+        apply_hl_group_name_hl(groups, idx, line)
+        apply_color_obj_hl(groups, idx, line)
     end
 end
 
