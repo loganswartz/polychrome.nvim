@@ -44,6 +44,42 @@ Colorscheme:define('mytheme', function ()
 end):apply()
 ```
 
+By default, a few groups are automatically defined before your definition
+function is run. These groups represent all the supported spcial GUI features
+supported by Neovim at this time. Currently, this means:
+
+```lua
+    Strikethrough { gui = "strikethrough" }
+    Underline { gui = "underline" }
+    Underdouble { gui = "underdouble" }
+    Undercurl { gui = "undercurl" }
+    Underdotted { gui = "underdotted" }
+    Underdashed { gui = "underdashed" }
+    Reverse { gui = "reverse" }
+    Standout { gui = "standout" }
+    Bold { gui = "bold" }
+    Italic { gui = "italic" }
+```
+
+These groups are not special in any way, so use them as you would any other:
+
+```lua
+    SpellBad { Underdotted }
+    SpellCap { gui = Underdashed.gui }
+    -- of course, you can also just use the regular feature name directly
+    SpellLocal { gui = "underdouble" }
+```
+
+You can overwrite any of these by simply specifying them yourself in your
+definition, or you can disable the injection entirely by passing `{
+inject_gui_groups = false }` as a third argument to `Colorscheme.define`:
+
+```lua
+Colorscheme.define('my_colorscheme', function (_)
+    ...
+end, { inject_gui_groups = false })
+```
+
 ### Live Preview
 
 You can turn on a live preview of your colorscheme via the `:StartEditing`

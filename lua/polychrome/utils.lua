@@ -164,4 +164,16 @@ function M.reverse(list)
     return new
 end
 
+function M.partial(func, ...)
+    local unpack = unpack or table.unpack
+    local enclosed = { ... }
+
+    return function(...)
+        local passed = { ... }
+        -- join the tables
+        local params = { unpack(enclosed), unpack(passed) }
+        return func(unpack(params))
+    end
+end
+
 return M

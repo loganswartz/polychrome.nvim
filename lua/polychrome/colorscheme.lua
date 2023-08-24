@@ -1,4 +1,5 @@
 local color = require('polychrome.color')
+local utils = require('polychrome.utils')
 
 local M = {}
 
@@ -113,12 +114,18 @@ M.Group = { ---@diagnostic disable-line: missing-fields
     end,
 }
 
+---@class Options
+---@field inject_gui_groups boolean|nil  Should some default groups be automatically defined?
+
 ---@class Colorscheme
 ---@field name string
 ---@field groups { [string]: Group }
 ---@field new fun(self: Colorscheme, name: string): Colorscheme
----@field define fun(name: string, definition: fun(_: fun())): Colorscheme
----@field apply fun(self: Colorscheme)
+---@field define fun(name: string, definition: fun(_: fun()), options: Options|nil): Colorscheme  Define a new colorscheme
+---@field apply fun(self: Colorscheme)  Apply the created colorscheme
+---@field extend fun(self: Colorscheme, func: fun(_: fun()))  Run the given function with a modified global environment to enable use of our DSL
+---@field _register_group fun(self: Colorscheme, group_name: string): Group  Register a group to the colorscheme
+---@field _inject_gui_features fun(self: Colorscheme)  Register some sensible default groups
 
 ---@type Colorscheme
 M.Colorscheme = { ---@diagnostic disable-line: missing-fields
@@ -132,62 +139,24 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
     end,
 
     -- Define a new colorscheme.
-    define = function(name, definition)
+    define = function(name, definition, options)
         if (name == nil) then
             error("You must give the colorscheme a name.")
         end
 
         local colorscheme = M.Colorscheme:new(name)
 
-        local function register_group(group_name)
-            local existing = colorscheme.groups[group_name]
-            if existing then
-                return existing
-            end
-
-            local group = M.Group:new(group_name)
-            -- Allow the group to access the colorscheme context
-            group.get_colorscheme = function()
-                return colorscheme
-            end
-            -- register the group to the scheme
-            rawset(colorscheme.groups, group_name, group)
-
-            return group
+        -- register the typical GUI features
+        local skip_inject_gui = options ~= nil and options.inject_gui_groups == false
+        -- don't apply if explicitly disabled
+        if not skip_inject_gui then
+            colorscheme:_inject_gui_features()
         end
+        -- register the user-specified highlights
+        colorscheme:extend(definition)
 
-        local lookup = setmetatable({
-            -- inject color system constructors so we don't have to import them
-            RGB = color.RGB,
-            rgb = color.RGB,
-            lRGB = color.lRGB,
-            lrgb = color.lRGB,
-            HSL = color.HSL,
-            hsl = color.HSL,
-            Oklab = color.Oklab,
-            oklab = color.Oklab,
-            Oklch = color.Oklch,
-            oklch = color.Oklch,
-            CIEXYZ = color.CIEXYZ,
-            ciexyz = color.CIEXYZ,
-            -- inject helper for group names that have special characters in them
-            _ = register_group,
-        }, {
-            -- all other unrecognized global function calls should return
-            -- existing groups from colorscheme.groups, or inject new ones
-            __index = function(_, key)
-                -- check _G first to allow using the standard globals
-                return _G[key] or register_group(key)
-            end,
-        })
-
-        -- with this, any call to an unrecognized global function will create a
-        -- new highlight group under that name
-        setfenv(definition, lookup)
-
-        -- run the user colorscheme definition, which will update the colorscheme in-place
-        definition(register_group)
-
+        -- if the live preview mode is active, this allows it to access the
+        -- colorscheme directly without any complicated logic
         if POLYCHROME_EDITING ~= nil then
             POLYCHROME_EDITING = colorscheme
         end
@@ -211,6 +180,78 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
                 print('Error defining "' .. name .. '": ' .. result)
             end
         end
+    end,
+
+    extend = function(self, func)
+        local register = utils.partial(self._register_group, self)
+
+        -- this will serve as the global environment for the given function
+        local lookup = setmetatable({
+            -- inject color system constructors so we don't have to import them
+            RGB = color.RGB,
+            rgb = color.RGB,
+            lRGB = color.lRGB,
+            lrgb = color.lRGB,
+            HSL = color.HSL,
+            hsl = color.HSL,
+            Oklab = color.Oklab,
+            oklab = color.Oklab,
+            Oklch = color.Oklch,
+            oklch = color.Oklch,
+            CIEXYZ = color.CIEXYZ,
+            ciexyz = color.CIEXYZ,
+            -- inject helper for group names that have special characters in them
+            _ = register,
+        }, {
+            -- all other unrecognized global function calls should return
+            -- existing groups from colorscheme.groups, or inject new ones
+            __index = function(_, key)
+                -- check _G first to allow using the standard globals
+                return _G[key] or register(key)
+            end,
+        })
+
+        -- with this, any call to an unrecognized global function will create a
+        -- new highlight group under that name
+        setfenv(func, lookup)
+
+        -- run the function, which will update the colorscheme in-place
+        return func(register)
+    end,
+
+    _register_group = function(self, group_name)
+        local existing = self.groups[group_name]
+        if existing then
+            return existing
+        end
+
+        local group = M.Group:new(group_name)
+        -- Allow the group to access the colorscheme context
+        group.get_colorscheme = function()
+            return self
+        end
+        -- register the group to the scheme
+        rawset(self.groups, group_name, group)
+
+        return group
+    end,
+
+    -- Register the basic GUI features to avoid boilerplate in user-defined colorschemes.
+    -- Users can still overwriting these by simply specifying them themselves.
+    _inject_gui_features = function(self)
+        ---@diagnostic disable: undefined-global
+        return self:extend(function()
+            Strikethrough { gui = "strikethrough" }
+            Underline { gui = "underline" }
+            Underdouble { gui = "underdouble" }
+            Undercurl { gui = "undercurl" }
+            Underdotted { gui = "underdotted" }
+            Underdashed { gui = "underdashed" }
+            Reverse { gui = "reverse" }
+            Standout { gui = "standout" }
+            Bold { gui = "bold" }
+            Italic { gui = "italic" }
+        end)
     end,
 }
 M.Colorscheme.__index = M.Colorscheme
