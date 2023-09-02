@@ -173,7 +173,9 @@ M.Color = { ---@diagnostic disable-line: missing-fields
     end,
 
     hex = function(self)
-        return self:to('rgb'):hex()
+        -- perf: cache the hex conversion to avoid recalculating every time the color is used
+        self._hex = self._hex or self:to('rgb'):hex()
+        return self._hex
     end,
 }
 M.Color.__index = M.Color
