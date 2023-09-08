@@ -4,12 +4,33 @@ local utils = require('polychrome.utils')
 
 local M = {}
 
--- https://en.wikipedia.org/wiki/SRGB#From_CIE_XYZ_to_sRGB
--- Actually use values from https://en.wikipedia.org/wiki/SRGB#sYCC, which are higher precision
-M.CIEXYZ_to_lRGB = matrix({
-    { 3.2406255,  -1.5372080, -0.4986286 },
-    { -0.9689307, 1.8757561,  0.0415175 },
-    { 0.0557101,  -0.2040211, 1.0569959 },
+M.lRGB_to_Oklab_M1 = matrix({
+    { 0.4122214708, 0.5363325363, 0.0514459929 },
+    { 0.2119034982, 0.6806995451, 0.1073969566 },
+    { 0.0883024619, 0.2817188376, 0.6299787005 },
+})
+M.lRGB_to_Oklab_M2 = matrix({
+    { 0.2104542553, 0.7936177850,  -0.0040720468 },
+    { 1.9779984951, -2.4285922050, 0.4505937099 },
+    { 0.0259040371, 0.7827717662,  -0.8086757660 },
+})
+
+-- we could just invert the arrays above, but hardcoding the inverted
+-- matrices gives us *slightly* higher precision and avoids needing to
+-- perform that inversion every time we convert from Oklab to lRGB
+
+-- inverse of lRGB_to_Oklab_M2
+M.Oklab_to_lRGB_M1 = matrix({
+    { 1, 0.3963377774,  0.2158037573 },
+    { 1, -0.1055613458, -0.0638541728 },
+    { 1, -0.0894841775, -1.2914855480 },
+})
+
+-- inverse of lRGB_to_Oklab_M1
+M.Oklab_to_lRGB_M2 = matrix({
+    { 4.0767416621,  -3.3077115913, 0.2309699292 },
+    { -1.2684380046, 2.6097574011,  -0.3413193965 },
+    { -0.0041960863, -0.7034186147, 1.7076147010 },
 })
 
 ---@class lRGB : Color
@@ -36,7 +57,7 @@ M.lRGB = { ---@diagnostic disable-line: missing-fields
     end,
 
     get_parent_gamut = function(self)
-        return require('polychrome.color.ciexyz').CIEXYZ
+        return require('polychrome.color.oklab').Oklab
     end,
 
     ---@param self lRGB
@@ -46,30 +67,42 @@ M.lRGB = { ---@diagnostic disable-line: missing-fields
             { self.lg },
             { self.lb },
         })
-        local xyz = M.CIEXYZ_to_lRGB:invert():mul(rgb):transpose()[1]
+
+        local _lms = M.lRGB_to_Oklab_M1:mul(rgb):transpose()[1]
+        local l, m, s = utils.nroot(_lms[1]), utils.nroot(_lms[2]), utils.nroot(_lms[3])
+        local Lab = M.lRGB_to_Oklab_M2:mul(matrix({
+            { l },
+            { m },
+            { s },
+        })):transpose()[1]
 
         return self:get_parent_gamut():new({
-            X = xyz[1],
-            Y = xyz[2],
-            Z = xyz[3],
+            L = Lab[1],
+            a = Lab[2],
+            b = Lab[3],
         })
     end,
 
     ---@param self lRGB
-    ---@param parent CIEXYZ
+    ---@param parent Oklab
     from_parent = function(self, parent)
-        local xyz = matrix({
-            { parent.X },
-            { parent.Y },
-            { parent.Z },
+        local Lab = matrix({
+            { parent.L },
+            { parent.a },
+            { parent.b },
         })
+        local lms = M.Oklab_to_lRGB_M1:mul(Lab):transpose()[1]
 
-        local rgb = M.CIEXYZ_to_lRGB:mul(xyz):transpose()[1]
+        local lrgb = M.Oklab_to_lRGB_M2:mul(matrix({
+            { lms[1] ^ 3 },
+            { lms[2] ^ 3 },
+            { lms[3] ^ 3 },
+        })):transpose()[1]
 
         return self:new({
-            lr = utils.clamp(rgb[1], 0, 1),
-            lg = utils.clamp(rgb[2], 0, 1),
-            lb = utils.clamp(rgb[3], 0, 1),
+            lr = lrgb[1],
+            lg = lrgb[2],
+            lb = lrgb[3],
         })
     end,
 }
