@@ -1,13 +1,13 @@
 local utils = require('polychrome.utils')
 
 ---@see Reference https://drafts.csswg.org/css-color/#color-conversion-code
-local M = {}
 
 ---@class Color A generic color that can be converted to a hex value.
 ---@field __type string
 ---@field is_color_object boolean
----@field new fun(self: Color, obj: table?): Color Create a new instance of the class.
----@field _short_new fun(self: Color, ...: number): Color Create a new instance of the class.
+---@field new fun(self: Color, ...: table|number): Color Create a new instance of the class.
+---@field components string[] The components of the gamut in the order they are specified.
+---@field to_matrix fun(self: Color): Matrix Convert the color to a `<number of components> x 1` matrix.
 ---@overload fun(self: Color, ...: number): Color Create a new instance of the class.
 ---@field is fun(self: Color, type: Color): boolean Is the color the same type as the argument?
 ---@field get_type fun(self: Color): Color? Return the class of the color.
@@ -23,17 +23,49 @@ local M = {}
 ---@field hex fun(self: Color): string
 
 ---@type Color
-M.Color = { ---@diagnostic disable-line: missing-fields
+local M = { ---@diagnostic disable-line: missing-fields
     is_color_object = true,
+    components = nil,
 
-    new = utils.new,
+    new = function(self, ...)
+        local args = { ... }
+        local obj = {}
 
-    _short_new = function(self)
-        error("Not implemented.")
+        if #args == 1 and #args[1] == 0 then
+            -- `rgb({ r = 50, g = 100, b = 200 })` syntax
+            obj = args[1]
+        else
+            if #args == 1 and #args[1] > 0 then
+                -- `rgb({ 50, 100, 200 })` syntax
+                -- convert to `rgb(50, 100, 200)` syntax
+                args = args[1]
+            end
+
+            -- `rgb(50, 100, 200)` syntax
+            for index, value in ipairs(args) do
+                local key = self.components[index]
+                obj[key] = value
+            end
+        end
+
+        setmetatable(obj, self)
+
+        return obj
     end,
 
     __call = function(self, ...)
-        return self:_short_new(...)
+        return self:new(...)
+    end,
+
+    to_matrix = function(self)
+        local matrix = require('polychrome.matrix')
+
+        local rows = {}
+        for _, key in ipairs(self.components) do
+            table.insert(rows, self[key])
+        end
+
+        return matrix(rows)
     end,
 
     get_parent_gamut = function()
@@ -45,7 +77,8 @@ M.Color = { ---@diagnostic disable-line: missing-fields
     end,
 
     get_type = function(self)
-        for _, value in pairs({ M.HSL, M.RGB, M.lRGB, M.Oklab, M.Oklch }) do
+        local color = require('polychrome.color')
+        for _, value in pairs({ color.hsl, color.rgb, color.lrgb, color.oklab, color.oklch, color.ciexyz }) do
             if self:is(value) then
                 return value
             end
@@ -172,12 +205,33 @@ M.Color = { ---@diagnostic disable-line: missing-fields
         return current
     end,
 
+    __eq = function(a, b)
+        for _, key in ipairs(a.components) do
+            if a[key] ~= b[key] then
+                return false
+            end
+        end
+
+        return true
+    end,
+
+    __tostring = function(self)
+        return self:hex()
+    end,
+
+    -- perf: cache the hex conversion to avoid recalculating every time the color is used
     hex = function(self)
-        -- perf: cache the hex conversion to avoid recalculating every time the color is used
-        self._hex = self._hex or self:to('rgb'):hex()
+        -- if we have a cached hex value and the color components haven't changed
+        if self._hex ~= nil and self._previous_values == self then
+            return self._hex
+        end
+
+        self._hex = self:to('rgb'):hex()
+        self._previous_values = self
+
         return self._hex
     end,
 }
-M.Color.__index = M.Color
+M.__index = M
 
 return M

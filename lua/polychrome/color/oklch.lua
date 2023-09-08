@@ -1,33 +1,21 @@
-local Color = require('polychrome.color.base').Color
+local Color = require('polychrome.color.base')
 local utils = require('polychrome.utils')
-
-local M = {}
 
 ---@class Oklch : Color
 ---@field __type 'oklch'
 ---@field L number The "lightness" value of the color [0-1]
 ---@field c number The "chroma" value of the color [0-1]
 ---@field h number The "hue" value of the color [0-360]
----@field new fun(self: Oklch, obj: table): Oklch Create a new instance of the class.
----@overload fun(self: Oklch, ...: number): Oklch Create a new instance of the class.
+---@field new fun(self: Oklch, ...: table|number): Oklch Create a new instance of the class.
+---@overload fun(self: Oklch, ...: table|number): Oklch Create a new instance of the class.
 
 ---@type Oklch
-M.Oklch = { ---@diagnostic disable-line: missing-fields
+local M = { ---@diagnostic disable-line: missing-fields
     __type = 'oklch',
-    new = utils.new,
-
-    _short_new = function(self, ...)
-        local attrs = { ... }
-
-        return self:new({
-            L = attrs[1],
-            c = attrs[2],
-            h = attrs[3],
-        })
-    end,
+    components = { 'L', 'c', 'h' },
 
     get_parent_gamut = function(self)
-        return require('polychrome.color.oklab').Oklab
+        return require('polychrome.color.oklab')
     end,
 
     ---@param self Oklch
@@ -49,7 +37,7 @@ M.Oklch = { ---@diagnostic disable-line: missing-fields
         })
     end,
 }
-M.Oklch.__index = M.Oklch
-setmetatable(M.Oklch, Color)
+M.__index = M
+setmetatable(M, Color)
 
 return M

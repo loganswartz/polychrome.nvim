@@ -44,6 +44,20 @@ Colorscheme:define('mytheme', function ()
 end):apply()
 ```
 
+Colors are represented by tables, so there is no reason you can't define them
+outside of a colorscheme definition. This makes it easy to define multiple
+palettes, or collect all your colors in one location:
+
+```lua
+local rgb = require('polychrome.color.rgb')
+
+local palette = {
+    red = rgb(255, 0, 0), -- specify values as individual arguments
+    green = rgb({ 0, 255, 0 }), -- or pass an ordered table
+    blue = rgb({ r = 255, g = 0, b = 255 }), -- or even specify the components by name
+}
+```
+
 By default, a few groups are automatically defined before your definition
 function is run. These groups represent all the supported spcial GUI features
 supported by Neovim at this time. Currently, this means:
@@ -119,11 +133,10 @@ the most common groups:
 :so $VIMRUNTIME/syntax/hitest.vim
 ```
 
-## Misc
+## Chroma clipping
 
-Currently, converting colors from a larger color gamut to a smaller one doesn't
-do any intelligent chroma clipping, so ex. colors outside the range of sRGB but
-specified in oklab, will not convert properly to the closest sRGB value
-(perceptually). This is something I'd like to handle eventually, but I haven't
-yet figured out the best way to organize the logic for that in a maintainable
-way.
+When converting from a larger gamut down into sRGB, chroma clipping is performed
+using code adapted from Björn Ottosson's methods described
+[here](https://bottosson.github.io/posts/gamutclipping/#source-code). The
+clipping is performed in the Oklab colorspace, which should result in a very
+accurate translation.

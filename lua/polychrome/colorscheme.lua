@@ -188,18 +188,18 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
         -- this will serve as the global environment for the given function
         local lookup = setmetatable({
             -- inject color system constructors so we don't have to import them
-            RGB = color.RGB,
-            rgb = color.RGB,
-            lRGB = color.lRGB,
-            lrgb = color.lRGB,
-            HSL = color.HSL,
-            hsl = color.HSL,
-            Oklab = color.Oklab,
-            oklab = color.Oklab,
-            Oklch = color.Oklch,
-            oklch = color.Oklch,
-            CIEXYZ = color.CIEXYZ,
-            ciexyz = color.CIEXYZ,
+            RGB = color.rgb,
+            rgb = color.rgb,
+            lRGB = color.lrgb,
+            lrgb = color.lrgb,
+            HSL = color.hsl,
+            hsl = color.hsl,
+            Oklab = color.oklab,
+            oklab = color.oklab,
+            Oklch = color.oklch,
+            oklch = color.oklch,
+            CIEXYZ = color.ciexyz,
+            ciexyz = color.ciexyz,
             -- inject helper for group names that have special characters in them
             _ = register,
         }, {

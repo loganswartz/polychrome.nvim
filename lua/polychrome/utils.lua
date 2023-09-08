@@ -1,16 +1,5 @@
 local M = {}
 
----@generic T
----@param self T
----@param obj table?
----@return T
-function M.new(self, obj)
-    obj = obj or {}
-    setmetatable(obj, self)
-
-    return obj
-end
-
 --- Convert a gamma-corrected RGB value to its linear RGB value.
 ---@param x number
 ---@return number

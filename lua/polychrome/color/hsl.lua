@@ -1,31 +1,19 @@
-local Color = require('polychrome.color.base').Color
+local Color = require('polychrome.color.base')
 local utils = require('polychrome.utils')
-
-local M = {}
 
 ---@class HSL : Color
 ---@field __type 'hsl'
 ---@field h number The "hue" value of the color [0-360]
 ---@field s number The "saturation" value of the color [0-100]
 ---@field l number The "lightness" value of the color [0-100]
----@field new fun(self: HSL, obj: table?): HSL Create a new instance of the class.
----@overload fun(self: HSL, ...: number): HSL Create a new instance of the class.
+---@field new fun(self: HSL, ...: table|number): HSL Create a new instance of the class.
+---@overload fun(self: HSL, ...: table|number): HSL Create a new instance of the class.
 ---@field hue_to_RGB_value fun(p: number, q: number, t: number): number Convert a hue to an RGB component value
 
 ---@type HSL
-M.HSL = { ---@diagnostic disable-line: missing-fields
+local M = { ---@diagnostic disable-line: missing-fields
     __type = 'hsl',
-    new = utils.new,
-
-    _short_new = function(self, ...)
-        local attrs = { ... }
-
-        return self:new({
-            h = attrs[1],
-            s = attrs[2],
-            l = attrs[3],
-        })
-    end,
+    components = { 'h', 's', 'l' },
 
     hue_to_RGB_value = function(p, q, t)
         if (t < 0) then t = t + 1 end
@@ -43,7 +31,7 @@ M.HSL = { ---@diagnostic disable-line: missing-fields
     end,
 
     get_parent_gamut = function(self)
-        return require('polychrome.color.rgb').RGB
+        return require('polychrome.color.rgb')
     end,
 
     ---@param self HSL
@@ -127,14 +115,10 @@ M.HSL = { ---@diagnostic disable-line: missing-fields
         s = math.abs(s * 100)
         l = math.abs(l * 100)
 
-        return self:new({
-            h = h,
-            s = s,
-            l = l,
-        })
+        return self:new(h, s, l)
     end,
 }
-M.HSL.__index = M.HSL
-setmetatable(M.HSL, Color)
+M.__index = M
+setmetatable(M, Color)
 
 return M

@@ -5,12 +5,12 @@ local preview = require('polychrome.preview')
 local M = {}
 
 M.Colorscheme = colorscheme.Colorscheme
-M.rgb = color.RGB
-M.lrgb = color.lRGB
-M.hsl = color.HSL
-M.oklab = color.Oklab
-M.oklch = color.Oklch
-M.ciexyz = color.CIEXYZ
+M.rgb = color.rgb
+M.lrgb = color.lrgb
+M.hsl = color.hsl
+M.oklab = color.oklab
+M.oklch = color.oklch
+M.ciexyz = color.ciexyz
 M.StartPreview = preview.StartPreview
 M.StopPreview = preview.StopPreview
 

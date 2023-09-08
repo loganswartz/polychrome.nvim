@@ -31,8 +31,8 @@ function M.gamut_clip_preserve_chroma(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab').Oklab(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb').lRGB:_from_oklab_naive(lab)
+    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
+    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -56,8 +56,8 @@ function M.gamut_clip_project_to_0_5(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab').Oklab(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb').lRGB:_from_oklab_naive(lab)
+    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
+    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -85,8 +85,8 @@ function M.gamut_clip_project_to_L_cusp(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab').Oklab(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb').lRGB:_from_oklab_naive(lab)
+    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
+    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -114,8 +114,8 @@ function M.gamut_clip_adaptive_L0_0_5(rgb, alpha)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab').Oklab(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb').lRGB:_from_oklab_naive(lab)
+    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
+    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -148,8 +148,8 @@ function M.gamut_clip_adaptive_L0_L_cusp(rgb, alpha)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab').Oklab(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb').lRGB:_from_oklab_naive(lab)
+    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
+    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
 end
 
 return M
