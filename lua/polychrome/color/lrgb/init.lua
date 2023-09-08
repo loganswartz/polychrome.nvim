@@ -39,7 +39,9 @@ M.Oklab_to_lRGB_M2 = matrix({
 ---@field lg number The green value of the color [0-1]
 ---@field lb number The blue value of the color [0-1]
 ---@field new fun(self: lRGB, obj: table?): lRGB Create a new instance of the class.
+---@field _from_oklab_naive fun(self: lRGB, parent: Oklab): lRGB Naively convert from Oklab to lRGB
 ---@overload fun(self: lRGB, ...: number): lRGB Create a new instance of the class.
+---@field to_parent fun(self: lRGB): Oklab
 
 ---@type lRGB
 M.lRGB = { ---@diagnostic disable-line: missing-fields
@@ -86,6 +88,10 @@ M.lRGB = { ---@diagnostic disable-line: missing-fields
     ---@param self lRGB
     ---@param parent Oklab
     from_parent = function(self, parent)
+        return require('polychrome.color.lrgb.clip').gamut_clip_preserve_chroma(self:_from_oklab_naive(parent))
+    end,
+
+    _from_oklab_naive = function(self, parent)
         local Lab = matrix({
             { parent.L },
             { parent.a },
