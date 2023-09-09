@@ -17,12 +17,15 @@ local Colorscheme = require('polychrome').Colorscheme
 --   HSL (`hsl`)
 --   Oklab (`oklab`)
 --   Oklch (`oklch`)
+--   CIEXYZ (`ciexyz`)
 --
 -- You can mix and match -- your usage as you please. The helpers are
 -- automatically injected into the colorscheme definition context. However, if
 -- you prefer to import the helpers explicitly, you can do:
 --
 --   local rgb = require('polychrome').rgb
+--  or:
+--   local rgb = require('polychrome.color.rgb')
 
 Colorscheme:define('mytheme', function ()
     -- most groups can be specified like this
@@ -54,7 +57,7 @@ local rgb = require('polychrome.color.rgb')
 local palette = {
     red = rgb(255, 0, 0), -- specify values as individual arguments
     green = rgb({ 0, 255, 0 }), -- or pass an ordered table
-    blue = rgb({ r = 255, g = 0, b = 255 }), -- or even specify the components by name
+    blue = rgb({ r = 0, g = 0, b = 255 }), -- or even specify the components by name
 }
 ```
 
