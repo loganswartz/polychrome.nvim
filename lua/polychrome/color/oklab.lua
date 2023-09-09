@@ -36,15 +36,10 @@ local M = { ---@diagnostic disable-line: missing-fields
         local lab = self:to_matrix()
 
         -- transform to l'm's'
-        local _lms = Oklab_to_XYZ_M2:invert():mul(lab):transpose()[1]
+        local _lms = Oklab_to_XYZ_M2:invert():mul(lab)
 
         -- cube each individual value
-        local lms = matrix({
-            { _lms[1] ^ 3 },
-            { _lms[2] ^ 3 },
-            { _lms[3] ^ 3 },
-        })
-
+        local lms = _lms:replace(function(e) return e ^ 3 end)
         -- map
         local xyz = Oklab_to_XYZ_M1:invert():mul(lms):transpose()[1]
 
@@ -58,7 +53,7 @@ local M = { ---@diagnostic disable-line: missing-fields
         local lms = Oklab_to_XYZ_M1:mul(parent:to_matrix())
 
         -- cube root each individual value
-        local _lms = matrix({ vim.tbl_map(utils.nroot, lms:transpose()[1]) }):transpose()
+        local _lms = lms:replace(utils.nroot):transpose()
 
         -- transform to lab coordinates
         local lab = Oklab_to_XYZ_M2:mul(_lms):transpose()

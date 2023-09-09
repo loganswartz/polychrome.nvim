@@ -54,13 +54,9 @@ local M = { ---@diagnostic disable-line: missing-fields
     to_parent = function(self)
         local rgb = self:to_matrix()
 
-        local _lms = lRGB_to_Oklab_M1:mul(rgb):transpose()[1]
-        local l, m, s = utils.nroot(_lms[1]), utils.nroot(_lms[2]), utils.nroot(_lms[3])
-        local lab = lRGB_to_Oklab_M2:mul(matrix({
-            { l },
-            { m },
-            { s },
-        })):transpose()[1]
+        local _lms = lRGB_to_Oklab_M1:mul(rgb)
+        local lms = _lms:replace(utils.nroot)
+        local lab = lRGB_to_Oklab_M2:mul(lms):transpose()[1]
 
         return self:get_parent_gamut():new(lab)
     end,
@@ -73,13 +69,10 @@ local M = { ---@diagnostic disable-line: missing-fields
 
     _from_oklab_naive = function(self, parent)
         local lab = parent:to_matrix()
-        local lms = Oklab_to_lRGB_M1:mul(lab):transpose()[1]
 
-        local lrgb = Oklab_to_lRGB_M2:mul(matrix({
-            { lms[1] ^ 3 },
-            { lms[2] ^ 3 },
-            { lms[3] ^ 3 },
-        })):transpose()[1]
+        local lms = Oklab_to_lRGB_M1:mul(lab)
+        local _lms = lms:replace(function(e) return e ^ 3 end)
+        local lrgb = Oklab_to_lRGB_M2:mul(_lms):transpose()[1]
 
         return self:new(lrgb)
     end,

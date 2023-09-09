@@ -5,38 +5,38 @@
 LuaMatrix License
  -----------
  ---
- ---   LuaMatrix ( http://luamatrix.luaforge.net/ ) is licensed under the
- ---    same terms as Lua (MIT license) reproduced below.  This means that
- ---     LuaMatrix is free software and can be used for both academic and
- ---      commercial purposes at absolutely no cost.
+ --- LuaMatrix ( http://luamatrix.luaforge.net/ ) is licensed under the
+ --- same terms as Lua (MIT license) reproduced below.  This means that
+ --- LuaMatrix is free software and can be used for both academic and
+ --- commercial purposes at absolutely no cost.
  ---
- ---         For details and rationale, see http://www.lua.org/license.html .
+ --- For details and rationale, see http://www.lua.org/license.html .
  ---
- ---            ===============================================================================
+ --- ===============================================================================
  ---
- ---               Copyright (C) 2007-2010 Michael Lutz.
+ --- Copyright (C) 2007-2010 Michael Lutz.
  ---
- ---                  Permission is hereby granted, free of charge, to any person obtaining a copy
- ---                   of this software and associated documentation files (the "Software"), to deal
- ---                    in the Software without restriction, including without limitation the rights
- ---                     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- ---                      copies of the Software, and to permit persons to whom the Software is
- ---                       furnished to do so, subject to the following conditions:
+ --- Permission is hereby granted, free of charge, to any person obtaining a copy
+ --- of this software and associated documentation files (the "Software"), to deal
+ --- in the Software without restriction, including without limitation the rights
+ --- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ --- copies of the Software, and to permit persons to whom the Software is
+ --- furnished to do so, subject to the following conditions:
  ---
- ---                          The above copyright notice and this permission notice shall be included in
- ---                           all copies or substantial portions of the Software.
+ --- The above copyright notice and this permission notice shall be included in
+ --- all copies or substantial portions of the Software.
  ---
- ---                              THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- ---                               IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- ---                                FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- ---                                 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- ---                                  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- ---                                   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- ---                                    THE SOFTWARE.
+ --- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ --- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ --- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+ --- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ --- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ --- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ --- THE SOFTWARE.
  ---
- ---                                       ===============================================================================
+ --- ===============================================================================
  ---
- ---                                          (end of COPYRIGHT)
+ --- (end of COPYRIGHT)
 
 LUA MODULE
 
@@ -179,7 +179,7 @@ LICENSE
 ---@field pow fun(m1: Matrix, num: number): Matrix
 ---@field print fun(mtx: Matrix, formatstr: string|nil): nil
 ---@field random fun(m1: Matrix, start: number|nil, stop: number|nil, idp: number|nil): Matrix
----@field replace fun(m1: Matrix, func: fun(item: number, ...), ...): Matrix
+---@field replace fun(m1: Matrix, func: fun(item: number, ...): number, ...): Matrix
 ---@field root fun(m1: Matrix, root: number, iters: number|nil): (number, number, number)
 ---@field rotl fun(m1: Matrix): Matrix
 ---@field rotr fun(m1: Matrix): Matrix
@@ -1084,7 +1084,7 @@ function matrix.len(m1)
 end
 
 --// matrix.replace (mtx, func, ...)
--- for each element e in the matrix mtx, replace it with func(mtx, ...).
+-- for each element e in the matrix mtx, replace it with func(e, ...).
 function matrix.replace(m1, func, ...)
     local mtx = {}
     for i = 1, #m1 do
