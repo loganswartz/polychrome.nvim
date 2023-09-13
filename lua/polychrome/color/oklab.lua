@@ -1,18 +1,6 @@
 local Color = require('polychrome.color.base')
 local utils = require('polychrome.utils')
-local matrix = require('polychrome.matrix')
-
--- https://bottosson.github.io/posts/oklab/#converting-from-xyz-to-oklab
-local Oklab_to_XYZ_M1 = matrix({
-    { 0.8189330101, 0.3618667424, -0.1288597137 },
-    { 0.0329845436, 0.9293118715, 0.0361456387 },
-    { 0.0482003018, 0.2643662691, 0.6338517070 }
-})
-local Oklab_to_XYZ_M2 = matrix({
-    { 0.2104542553, 0.7936177850,  -0.0040720468 },
-    { 1.9779984951, -2.4285922050, 0.4505937099 },
-    { 0.0259040371, 0.7827717662,  -0.8086757660 }
-})
+local matrices = require('polychrome.color.lrgb.matrices')
 
 ---@class Oklab : Color
 ---@field __type 'oklab'
@@ -36,12 +24,12 @@ local M = { ---@diagnostic disable-line: missing-fields
         local lab = self:to_matrix()
 
         -- transform to l'm's'
-        local _lms = Oklab_to_XYZ_M2:invert():mul(lab)
+        local _lms = matrices.Oklab_to_LMS:mul(lab)
 
         -- cube each individual value
         local lms = _lms:replace(function(e) return e ^ 3 end)
         -- map
-        local xyz = Oklab_to_XYZ_M1:invert():mul(lms):transpose()[1]
+        local xyz = matrices.LMS_to_XYZ:mul(lms):transpose()[1]
 
         return self:get_parent_gamut():new(xyz)
     end,
@@ -50,13 +38,13 @@ local M = { ---@diagnostic disable-line: missing-fields
     ---@param parent CIEXYZ
     from_parent = function(self, parent)
         -- convert to cone response
-        local lms = Oklab_to_XYZ_M1:mul(parent:to_matrix())
+        local lms = matrices.XYZ_to_LMS:mul(parent:to_matrix())
 
         -- cube root each individual value
         local _lms = lms:replace(utils.nroot):transpose()
 
         -- transform to lab coordinates
-        local lab = Oklab_to_XYZ_M2:mul(_lms):transpose()
+        local lab = matrices.LMS_to_Oklab:mul(_lms):transpose()
 
         return self:new(lab[1])
     end,

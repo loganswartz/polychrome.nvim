@@ -9,8 +9,10 @@ local HL_NAME_MAPPING = {
     gui = 'special',
 }
 
+---@param hl string
+---@param attr string
 local function get_hl_attr(hl, attr)
-    local ok, colors = pcall(vim.api.nvim_get_hl_by_name, hl, true)
+    local ok, colors = pcall(vim.api.nvim_get_hl, 0, { name = hl, link = false })
     local mapped_key = HL_NAME_MAPPING[attr] or attr
     if not ok or colors == nil or colors[mapped_key] == nil then
         return nil
