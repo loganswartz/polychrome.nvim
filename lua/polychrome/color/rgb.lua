@@ -2,6 +2,7 @@ local bit = require('bit')
 
 local Color = require('polychrome.color.base')
 local utils = require('polychrome.utils')
+local gamma = require('polychrome.color.math.gamma')
 
 ---@class RGB : Color
 ---@field __type 'rgb'
@@ -52,9 +53,9 @@ local M = { ---@diagnostic disable-line: missing-fields
     to_parent = function(self)
         local lRGB = require('polychrome.color.lrgb')
         return lRGB:new({
-            lr = utils.gamma_to_linear(self.r / 255),
-            lg = utils.gamma_to_linear(self.g / 255),
-            lb = utils.gamma_to_linear(self.b / 255),
+            lr = gamma.gamma_to_linear(self.r / 255),
+            lg = gamma.gamma_to_linear(self.g / 255),
+            lb = gamma.gamma_to_linear(self.b / 255),
         })
     end,
 
@@ -62,9 +63,9 @@ local M = { ---@diagnostic disable-line: missing-fields
     ---@param parent lRGB
     from_parent = function(self, parent)
         return self:new({
-            r = utils.round(utils.clamp(utils.linear_to_gamma(parent.lr) * 255)),
-            g = utils.round(utils.clamp(utils.linear_to_gamma(parent.lg) * 255)),
-            b = utils.round(utils.clamp(utils.linear_to_gamma(parent.lb) * 255)),
+            r = utils.round(utils.clamp(gamma.linear_to_gamma(parent.lr) * 255)),
+            g = utils.round(utils.clamp(gamma.linear_to_gamma(parent.lg) * 255)),
+            b = utils.round(utils.clamp(gamma.linear_to_gamma(parent.lb) * 255)),
         })
     end,
 }

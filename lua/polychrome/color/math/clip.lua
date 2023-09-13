@@ -1,5 +1,5 @@
 local utils = require('polychrome.utils')
-local intersection = require('polychrome.color.lrgb.intersection')
+local intersection = require('polychrome.color.math.intersection')
 
 local M = {}
 
@@ -32,7 +32,7 @@ function M.gamut_clip_preserve_chroma(rgb)
     local C_clipped = t * C
 
     lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
+    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -57,7 +57,7 @@ function M.gamut_clip_project_to_0_5(rgb)
     local C_clipped = t * C
 
     lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
+    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -86,7 +86,7 @@ function M.gamut_clip_project_to_L_cusp(rgb)
     local C_clipped = t * C
 
     lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
+    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -115,7 +115,7 @@ function M.gamut_clip_adaptive_L0_0_5(rgb, alpha)
     local C_clipped = t * C
 
     lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
+    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
 end
 
 ---@param rgb lRGB
@@ -149,7 +149,7 @@ function M.gamut_clip_adaptive_L0_L_cusp(rgb, alpha)
     local C_clipped = t * C
 
     lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_oklab_naive(lab)
+    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
 end
 
 return M

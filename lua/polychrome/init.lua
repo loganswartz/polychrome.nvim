@@ -10,6 +10,7 @@ local M = {
     oklab = color.oklab,
     oklch = color.oklch,
     ciexyz = color.ciexyz,
+    lms = color.lms,
     StartPreview = preview.StartPreview,
     StopPreview = preview.StopPreview,
 }

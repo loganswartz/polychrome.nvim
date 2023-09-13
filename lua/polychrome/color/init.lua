@@ -6,6 +6,7 @@ local M = {
     oklab = require('polychrome.color.oklab'),
     oklch = require('polychrome.color.oklch'),
     ciexyz = require('polychrome.color.ciexyz'),
+    lms = require('polychrome.color.lms'),
 }
 
 return M

@@ -1,6 +1,6 @@
 local Color = require('polychrome.color.base')
 local utils = require('polychrome.utils')
-local matrices = require('polychrome.color.lrgb.matrices')
+local matrices = require('polychrome.color.math.matrices')
 
 ---@class Oklab : Color
 ---@field __type 'oklab'
@@ -16,37 +16,30 @@ local M = { ---@diagnostic disable-line: missing-fields
     components = { 'L', 'a', 'b' },
 
     get_parent_gamut = function()
-        return require('polychrome.color.ciexyz')
+        return require('polychrome.color.lms')
     end,
 
     ---@param self Oklab
     to_parent = function(self)
-        local lab = self:to_matrix()
-
         -- transform to l'm's'
-        local _lms = matrices.Oklab_to_LMS:mul(lab)
+        local _lms = matrices.Oklab_to_LMS:mul(self:to_matrix())
 
         -- cube each individual value
-        local lms = _lms:replace(function(e) return e ^ 3 end)
-        -- map
-        local xyz = matrices.LMS_to_XYZ:mul(lms):transpose()[1]
+        local lms = _lms:replace(function(e) return e ^ 3 end):transpose()[1]
 
-        return self:get_parent_gamut():new(xyz)
+        return self:get_parent_gamut():new(lms)
     end,
 
     ---@param self Oklab
-    ---@param parent CIEXYZ
+    ---@param parent LMS
     from_parent = function(self, parent)
-        -- convert to cone response
-        local lms = matrices.XYZ_to_LMS:mul(parent:to_matrix())
-
         -- cube root each individual value
-        local _lms = lms:replace(utils.nroot):transpose()
+        local _lms = parent:to_matrix():replace(utils.nroot):transpose()
 
         -- transform to lab coordinates
-        local lab = matrices.LMS_to_Oklab:mul(_lms):transpose()
+        local lab = matrices.LMS_to_Oklab:mul(_lms):transpose()[1]
 
-        return self:new(lab[1])
+        return self:new(lab)
     end,
 }
 M.__index = M

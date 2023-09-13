@@ -10,7 +10,7 @@ local utils = require('polychrome.utils')
 ---@field new fun(self: lRGB, ...: table|number): lRGB Create a new instance of the class.
 ---@overload fun(self: lRGB, ...: table|number): lRGB Create a new instance of the class.
 ---@field _from_lms_naive fun(self: lRGB, parent: LMS): lRGB Naively convert from Oklab to lRGB
----@field to_parent fun(self: lRGB): LMS
+---@field to_parent fun(self: lRGB): Oklab
 ---@field get_parent_gamut fun(self: lRGB): LMS
 
 ---@type lRGB

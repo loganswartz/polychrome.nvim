@@ -202,6 +202,8 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
             oklch = color.oklch,
             CIEXYZ = color.ciexyz,
             ciexyz = color.ciexyz,
+            LMS = color.lms,
+            lms = color.lms,
             -- inject helper for group names that have special characters in them
             _ = register,
         }, {

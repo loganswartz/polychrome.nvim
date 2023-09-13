@@ -1,4 +1,4 @@
-local matrices = require('polychrome.color.lrgb.matrices')
+local matrices = require('polychrome.color.math.matrices')
 local utils = require('polychrome.utils')
 
 local M = {}
@@ -158,31 +158,31 @@ function M.find_gamut_intersection(a, b, L1, C1, L0, iterations)
             local sdt2 = 6 * s_dt ^ 2 * s_
 
             local r = matrices.LMS_to_lRGB[1][1] * l + matrices.LMS_to_lRGB[1][2] * m + matrices.LMS_to_lRGB[1][3] * s -
-            1
+                1
             local r1 = matrices.LMS_to_lRGB[1][1] * ldt + matrices.LMS_to_lRGB[1][2] * mdt +
-            matrices.LMS_to_lRGB[1][3] * sdt
+                matrices.LMS_to_lRGB[1][3] * sdt
             local r2 = matrices.LMS_to_lRGB[1][1] * ldt2 + matrices.LMS_to_lRGB[1][2] * mdt2 +
-            matrices.LMS_to_lRGB[1][3] * sdt2
+                matrices.LMS_to_lRGB[1][3] * sdt2
 
             local u_r = r1 / (r1 * r1 - 0.5 * r * r2)
             local t_r = -r * u_r
 
             local g = matrices.LMS_to_lRGB[2][1] * l + matrices.LMS_to_lRGB[2][2] * m + matrices.LMS_to_lRGB[2][3] * s -
-            1
+                1
             local g1 = matrices.LMS_to_lRGB[2][1] * ldt + matrices.LMS_to_lRGB[2][2] * mdt +
-            matrices.LMS_to_lRGB[2][3] * sdt
+                matrices.LMS_to_lRGB[2][3] * sdt
             local g2 = matrices.LMS_to_lRGB[2][1] * ldt2 + matrices.LMS_to_lRGB[2][2] * mdt2 +
-            matrices.LMS_to_lRGB[2][3] * sdt2
+                matrices.LMS_to_lRGB[2][3] * sdt2
 
             local u_g = g1 / (g1 * g1 - 0.5 * g * g2)
             local t_g = -g * u_g
 
             local b = matrices.LMS_to_lRGB[3][1] * l + matrices.LMS_to_lRGB[3][2] * m + matrices.LMS_to_lRGB[3][3] * s -
-            1
+                1
             local b1 = matrices.LMS_to_lRGB[3][1] * ldt + matrices.LMS_to_lRGB[3][2] * mdt +
-            matrices.LMS_to_lRGB[3][3] * sdt
+                matrices.LMS_to_lRGB[3][3] * sdt
             local b2 = matrices.LMS_to_lRGB[3][1] * ldt2 + matrices.LMS_to_lRGB[3][2] * mdt2 +
-            matrices.LMS_to_lRGB[3][3] * sdt2
+                matrices.LMS_to_lRGB[3][3] * sdt2
 
             local u_b = b1 / (b1 * b1 - 0.5 * b * b2)
             local t_b = -b * u_b

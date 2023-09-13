@@ -102,6 +102,7 @@ more color systems are supported:
  * Oklab (`oklab`)
  * Oklch (`oklch`)
  * CIEXYZ (`ciexyz`)
+ * LMS (`lms`)
  * (more eventually)
 
 The helpers are automatically injected into the colorscheme definition context,
@@ -145,21 +146,7 @@ end):apply()
 
 In fact, you don't even need to define your colorscheme inside the
 `colors/yourtheme.lua`; all that's needed is to call `apply()` on a colorscheme
-object in `colors/yourtheme.lua`. An example will make this clearer:
-
-```lua
--- lua/yourtheme/palette.lua
-
-local rgb = require('polychrome.color.rgb')
-
-local palette = {
-    red = rgb(255, 0, 0),
-    green = rgb({ 0, 255, 0 }),
-    blue = rgb({ r = 0, g = 0, b = 255 }),
-}
-
-return palette
-```
+object in `colors/yourtheme.lua`:
 
 ```lua
 -- lua/yourtheme/highlights.lua
@@ -180,6 +167,20 @@ return yourtheme
 local yourtheme = require('yourtheme.highlights')
 
 yourtheme:apply()
+```
+
+Since colorschemes are just tables, you can treat them like objects, and do
+things like providing several variants of your colorscheme. Here's a simple
+example:
+
+```lua
+-- colors/yourtheme.lua
+
+local yourtheme = require('yourtheme.main')
+local youralternatetheme = require('yourtheme.alternate')
+
+local theme = vim.g.yourtheme_variant == 'alternate' and youralternatetheme or yourtheme
+theme:apply()
 ```
 
 ### Documentation for end users
