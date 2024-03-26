@@ -67,6 +67,7 @@ local function apply_colorscheme()
     clear_highlights()
 
     -- load current file
+    ---@type Colorscheme|true|nil
     POLYCHROME_EDITING = true
     local definition, result = load(utils.read_buffer(BUFNR))
     if not definition then
@@ -82,7 +83,7 @@ local function apply_colorscheme()
     end
 
     -- check if a definition was run in the file
-    if POLYCHROME_EDITING == nil then
+    if POLYCHROME_EDITING == nil or POLYCHROME_EDITING == true then
         print('[polychrome] Could not find a colorscheme through the current buffer!')
         return
     end

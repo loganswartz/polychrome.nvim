@@ -142,6 +142,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
     -- Define a new colorscheme.
     define = function(name, definition, options)
+        options = options or {}
         if (name == nil) then
             error("You must give the colorscheme a name.")
         end
@@ -149,7 +150,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
         local colorscheme = M.Colorscheme:new(name)
 
         -- register the typical GUI features
-        local skip_inject_gui = options ~= nil and options.inject_gui_groups == false
+        local skip_inject_gui = options.inject_gui_groups == false
         -- don't apply if explicitly disabled
         if not skip_inject_gui then
             colorscheme:_inject_gui_features()

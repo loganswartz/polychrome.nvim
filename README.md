@@ -18,9 +18,11 @@ Here's a fully functional example of a (very basic) colorscheme defined with
 `polychrome`:
 
 ```lua
+-- colors/your_theme.lua
+
 local Colorscheme = require('polychrome').Colorscheme
 
-Colorscheme:define('yourtheme', function ()
+Colorscheme.define('your_theme', function ()
     Normal { fg = rgb(150, 150, 219), bg = rgb(20, 20, 20) }
     Comment { fg = rgb(135, 135, 135) }
     Conceal { fg = rgb(222, 222, 222), bg = Comment.fg }
@@ -35,42 +37,48 @@ Colorscheme:define('yourtheme', function ()
 end):apply()
 ```
 
-## Usage
-
 If you want to dive into a complete example already using polychrome.nvim, check
 out [`sunburn.nvim`](https://github.com/loganswartz/sunburn.nvim).
 
 Here's some quick context for people who aren't familiar with how colorschemes
 work in Vim/Neovim:
 
-When you run `colorscheme <some name>`, Neovim looks through the runtimepath for
-some file inside `<some runtimepath entry>/colors`, named `<some name>.vim` or
-`<some name>.lua`, and if found, runs that file. Historically, colorschemes are
+When you run `colorscheme your_theme`, Neovim looks through the runtimepath for
+some file inside `<some runtimepath entry>/colors`, named `your_theme.vim` or
+`your_theme.lua`, and if found, runs that file. Historically, colorschemes are
 made by simply putting a bunch of `hi` commands in this file (if you want an
 example of this, check out the `runtime/colors` directory of the neovim source).
 Modern plugin managers like `lazy.nvim`, `pckr.nvim`, `vim-plug`, etc. will
 handle adding plugins to the runtimepath, so setting up a plugin is simple if
 you format your project properly.
 
-### Getting Started
+## Quick Start
 
-To get started, create a new folder / git repo, and inside that folder, create a
-`colors` directory. Inside that directory, create `<theme name>.lua`, and
-populate it with the following:
+If you just want to start testing things out, create a file named
+`your_theme.lua`, and populate it with the following:
 
 ```lua
 local Colorscheme = require('polychrome').Colorscheme
 
--- replace `yourtheme` with the name of your colorscheme
-Colorscheme:define('yourtheme', function ()
-
+-- replace `your_theme` with the name of your colorscheme
+Colorscheme.define('your_theme', function ()
     -- Normal { fg = rgb(150, 150, 219), bg = rgb(20, 20, 20) }
-
-end):apply()
+end)
 ```
 
-You can then start adding highlights! Here are some examples of the different
-syntaxes and helpers that available:
+Then, while editing that file, do `:StartPreview`.
+
+You can then start adding highlights, and you'll instantly see the changes in
+your current window.
+
+> [!IMPORTANT]
+> If you are planning on creating a full colorscheme plugin, you may want to
+> skip to the [Proper Project Structure](#proper-plugin-structure) section now
+> to start with a flexible project structure.
+
+## Usage
+
+Here are some examples of the different syntaxes and helpers that available:
 
 ```lua
     -- most groups can be specified like this
@@ -95,7 +103,7 @@ syntaxes and helpers that available:
 That example shows off the `rgb` and `oklch` helper commands, but quite a few
 more color systems are supported:
 
- * RGB hex string (vim natively supports; just pass as a normal string)
+ * RGB hex string (Neovim natively supports; just pass as a normal string)
  * Raw RGB values (the `rgb` helper)
  * Linear (non-gamma-corrected) RGB (`lrgb`)
  * HSL (`hsl`)
@@ -115,12 +123,12 @@ local rgb = require('polychrome').rgb
 local rgb = require('polychrome.color.rgb')
 ```
 
-Colors are represented by tables, so there is no reason you can't define them
-outside of a colorscheme definition. This makes it easy to define multiple
-palettes, or collect all your colors in one location:
+Colors are objects (tables), so there is no reason you can't define and
+manipulate them outside of a colorscheme definition. This makes it easy to
+define multiple palettes, or collect all your colors in one location:
 
 ```lua
--- lua/yourtheme/palette.lua
+-- lua/your_theme/palette.lua
 
 local rgb = require('polychrome.color.rgb')
 
@@ -134,39 +142,39 @@ return palette
 ```
 
 ```lua
--- colors/yourtheme.lua
+-- colors/your_theme.lua
 
 local Colorscheme = require('polychrome').Colorscheme
-local palette = require('yourtheme.palette')
+local palette = require('your_theme.palette')
 
-Colorscheme:define('yourtheme', function ()
+Colorscheme.define('your_theme', function ()
     Normal { bg = palette.red }
 end):apply()
 ```
 
 In fact, you don't even need to define your colorscheme inside the
-`colors/yourtheme.lua`; all that's needed is to call `apply()` on a colorscheme
-object in `colors/yourtheme.lua`:
+`colors/your_theme.lua`; all that's needed is to call `apply()` on a colorscheme
+object in `colors/your_theme.lua`:
 
 ```lua
--- lua/yourtheme/highlights.lua
+-- lua/your_theme/highlights.lua
 
 local Colorscheme = require('polychrome').Colorscheme
-local palette = require('yourtheme.palette')
+local palette = require('your_theme.palette')
 
-local yourtheme = Colorscheme:define('yourtheme', function ()
+local your_theme = Colorscheme.define('your_theme', function ()
     Normal { bg = palette.red }
 end)
 
-return yourtheme
+return your_theme
 ```
 
 ```lua
--- colors/yourtheme.lua
+-- colors/your_theme.lua
 
-local yourtheme = require('yourtheme.highlights')
+local your_theme = require('your_theme.highlights')
 
-yourtheme:apply()
+your_theme:apply()
 ```
 
 Since colorschemes are just tables, you can treat them like objects, and do
@@ -174,30 +182,106 @@ things like providing several variants of your colorscheme. Here's a simple
 example:
 
 ```lua
--- colors/yourtheme.lua
+-- colors/your_theme.lua
 
-local yourtheme = require('yourtheme.main')
-local youralternatetheme = require('yourtheme.alternate')
+local your_theme = require('your_theme.main')
+local youralternatetheme = require('your_theme.alternate')
 
-local theme = vim.g.yourtheme_variant == 'alternate' and youralternatetheme or yourtheme
+local alternate = vim.g.your_theme_variant == 'alternate'
+local theme = alternate and your_alternate_theme or your_theme
+
 theme:apply()
 ```
+
+### Proper Plugin Structure
+
+The quick start section is great for testing things out, but if you're writing a
+full theme, it makes sense to set up a repo in a certain way, for maximum
+flexibility. Here's my recommendation:
+
+```
+.
+└── your_theme/
+    ├── lua/
+    │   └── your_theme/
+    │       ├── highlights.lua
+    │       ├── palette.lua
+    │       └── init.lua
+    └── colors/
+        └── your_theme.lua
+```
+
+`highlights.lua` is where you'll define the bulk of your colorscheme, and this
+is largely the same as the file shown in the Quick Start section:
+
+```lua
+-- your_theme/lua/your_theme/highlights.lua
+local Colorscheme = require('polychrome').Colorscheme
+
+local theme = Colorscheme.define('your_theme', function ()
+    -- Normal { fg = rgb(150, 150, 219), bg = rgb(20, 20, 20) }
+end)
+
+return theme
+```
+
+`palette.lua` is where you'll define all your colors:
+
+```lua
+-- your_theme/lua/your_theme/palette.lua
+
+local rgb = require('polychrome.color.rgb')
+
+local palette = {
+    red = rgb(255, 0, 0),
+    green = rgb(0, 255, 0),
+    blue = rgb(0, 0, 255),
+}
+
+return palette
+```
+
+`init.lua` can look something like this:
+
+```lua
+-- your_theme/lua/your_theme/init.lua
+
+local theme = require('your_theme.highlights')
+
+return theme
+```
+
+`colors/your_theme.lua` should then import your theme object and run `:apply()`
+on it:
+
+```lua
+-- your_theme/colors/your_theme.lua
+
+local theme = require('your_theme')
+-- or
+-- local theme = require('your_theme.highlights')
+
+theme:apply()
+```
+
+This way, other plugins can use your palettes (via
+`require('your_theme.palette')`) or other logic.
 
 ### Documentation for end users
 
 When you go to write documentation for users of your colorscheme, assuming that
 everything is set up correctly, all a user needs to do is install your plugin
-and `polychrome.nvim`, and then run `colorscheme yourtheme`. Here's a simple
+and `polychrome.nvim`, and then run `colorscheme your_theme`. Here's a simple
 example of a config for `lazy.nvim`:
 
 ```lua
 {
-    'you/yourtheme',
+    'you/your_theme',
     dependencies = {
         'loganswartz/polychrome.nvim'
     },
     config = function()
-        vim.cmd.colorscheme 'yourtheme'
+        vim.cmd.colorscheme 'your_theme'
     },
 }
 ```
@@ -235,7 +319,7 @@ definition, or you can disable the injection entirely by passing `{
 inject_gui_groups = false }` as a third argument to `Colorscheme.define`:
 
 ```lua
-Colorscheme.define('yourtheme', function (_)
+Colorscheme.define('your_theme', function (_)
     ...
 end, { inject_gui_groups = false })
 ```
