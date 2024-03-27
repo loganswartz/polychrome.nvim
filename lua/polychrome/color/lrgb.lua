@@ -1,6 +1,5 @@
 local Color = require('polychrome.color.base')
 local matrices = require('polychrome.color.math.matrices')
-local utils = require('polychrome.utils')
 
 ---@class lRGB : Color
 ---@field __type 'lrgb'
@@ -32,7 +31,9 @@ local M = { ---@diagnostic disable-line: missing-fields
     ---@param self lRGB
     ---@param parent LMS
     from_parent = function(self, parent)
-        return require('polychrome.color.math.clip').gamut_clip_preserve_chroma(self:_from_lms_naive(parent))
+        local naive = self:_from_lms_naive(parent)
+
+        return require('polychrome.color.math.clip').gamut_clip_preserve_chroma(naive)
     end,
 
     _from_lms_naive = function(self, parent)
@@ -43,5 +44,6 @@ local M = { ---@diagnostic disable-line: missing-fields
 }
 M.__index = M
 setmetatable(M, Color)
+
 
 return M

@@ -34,7 +34,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     ---@param parent LMS
     from_parent = function(self, parent)
         -- cube root each individual value
-        local _lms = parent:to_matrix():replace(utils.nroot):transpose()
+        local _lms = parent:to_matrix():replace(utils.nroot)
 
         -- transform to lab coordinates
         local lab = matrices.LMS_to_Oklab:mul(_lms):transpose()[1]

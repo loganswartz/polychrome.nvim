@@ -16,8 +16,10 @@ function M.gamut_clip_preserve_chroma(rgb)
     if in_lrgb_gamut(rgb) then
         return rgb
     end
+    local Oklab = require('polychrome.color.oklab')
 
-    local lab = rgb:to_parent()
+    local lms = rgb:to_parent()
+    local lab = Oklab:from_parent(lms)
 
     local L = lab.L
     local eps = 0.00001
@@ -31,8 +33,10 @@ function M.gamut_clip_preserve_chroma(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
+    -- convert back to LMS
+    local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to('lms')
+
+    return require('polychrome.color.lrgb'):_from_lms_naive(clipped)
 end
 
 ---@param rgb lRGB
@@ -41,8 +45,10 @@ function M.gamut_clip_project_to_0_5(rgb)
     if in_lrgb_gamut(rgb) then
         return rgb
     end
+    local Oklab = require('polychrome.color.oklab')
 
-    local lab = rgb:to_parent()
+    local lms = rgb:to_parent()
+    local lab = Oklab:from_parent(lms)
 
     local L = lab.L
     local eps = 0.00001
@@ -56,8 +62,10 @@ function M.gamut_clip_project_to_0_5(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
+    -- convert back to LMS
+    local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to('lms')
+
+    return require('polychrome.color.lrgb'):_from_lms_naive(clipped)
 end
 
 ---@param rgb lRGB
@@ -66,8 +74,10 @@ function M.gamut_clip_project_to_L_cusp(rgb)
     if in_lrgb_gamut(rgb) then
         return rgb
     end
+    local Oklab = require('polychrome.color.oklab')
 
-    local lab = rgb:to_parent()
+    local lms = rgb:to_parent()
+    local lab = Oklab:from_parent(lms)
 
     local L = lab.L
     local eps = 0.00001
@@ -85,8 +95,10 @@ function M.gamut_clip_project_to_L_cusp(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
+    -- convert back to LMS
+    local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to('lms')
+
+    return require('polychrome.color.lrgb'):_from_lms_naive(clipped)
 end
 
 ---@param rgb lRGB
@@ -97,8 +109,10 @@ function M.gamut_clip_adaptive_L0_0_5(rgb, alpha)
         return rgb
     end
     alpha = alpha or 0.05
+    local Oklab = require('polychrome.color.oklab')
 
-    local lab = rgb:to_parent()
+    local lms = rgb:to_parent()
+    local lab = Oklab:from_parent(lms)
 
     local L = lab.L
     local eps = 0.00001
@@ -114,8 +128,10 @@ function M.gamut_clip_adaptive_L0_0_5(rgb, alpha)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
+    -- convert back to LMS
+    local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to('lms')
+
+    return require('polychrome.color.lrgb'):_from_lms_naive(clipped)
 end
 
 ---@param rgb lRGB
@@ -126,8 +142,10 @@ function M.gamut_clip_adaptive_L0_L_cusp(rgb, alpha)
         return rgb
     end
     alpha = alpha or 0.05
+    local Oklab = require('polychrome.color.oklab')
 
-    local lab = rgb:to_parent()
+    local lms = rgb:to_parent()
+    local lab = Oklab:from_parent(lms)
 
     local L = lab.L
     local eps = 0.00001
@@ -148,8 +166,10 @@ function M.gamut_clip_adaptive_L0_L_cusp(rgb, alpha)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    lab = require('polychrome.color.oklab'):new(L_clipped, C_clipped * a_, C_clipped * b_)
-    return require('polychrome.color.lrgb'):_from_lms_naive(lab)
+    -- convert back to LMS
+    local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to('lms')
+
+    return require('polychrome.color.lrgb'):_from_lms_naive(clipped)
 end
 
 return M

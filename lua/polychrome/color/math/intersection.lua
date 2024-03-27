@@ -87,9 +87,12 @@ function M.find_cusp(a, b)
     -- First, find the maximum saturation (saturation S = C/L)
     local S_cusp = M.compute_max_saturation(a, b)
 
+    local Oklab = require('polychrome.color.oklab')
+    local lRGB = require('polychrome.color.lrgb')
+
     -- Convert to linear sRGB to find the first point where at least one of r,g or b >= 1:
-    local oklab = require('polychrome.color.oklab').Oklab(1, S_cusp * a, S_cusp * b)
-    local rgb_at_max = require('polychrome.color.lrgb').lRGB:_from_oklab_naive(oklab)
+    local lms = Oklab(1, S_cusp * a, S_cusp * b):to_parent()
+    local rgb_at_max = lRGB:_from_lms_naive(lms)
     local L_cusp = utils.nroot(1 / math.max(math.max(rgb_at_max.lr, rgb_at_max.lg), rgb_at_max.lb))
     local C_cusp = L_cusp * S_cusp
 
