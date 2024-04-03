@@ -9,133 +9,297 @@ local HL_NAME_MAPPING = {
     gui = 'special',
 }
 
----@param hl string
----@param attr string
-local function get_hl_attr(hl, attr)
-    local ok, colors = pcall(vim.api.nvim_get_hl, 0, { name = hl, link = false })
-    local mapped_key = HL_NAME_MAPPING[attr] or attr
-    if not ok or colors == nil or colors[mapped_key] == nil then
-        return nil
-    end
+--- The options that hold the actual color values.
+local COLOR_OPTIONS = {
+    'fg',
+    'bg',
+}
 
-    return string.format("#%06x", colors[mapped_key])
+--- Options that can be set but will be translated to a different key / removed from the final object.
+local VIRTUAL_OPTIONS = {
+    'gui',
+}
+
+--- A map of GUI flags to their corresponding highlight group keys.
+local GUI_FLAGS = {
+    bold = 'Bold',
+    standout = 'Standout',
+    underline = 'Underline',
+    undercurl = 'Undercurl',
+    underdouble = 'Underdouble',
+    underdotted = 'Underdotted',
+    underdashed = 'Underdashed',
+    strikethrough = 'Strikethrough',
+    italic = 'Italic',
+    reverse = 'Reverse',
+    nocombine = 'Nocombine',
+}
+
+--- The remaining (non-boolean) GUI options that can be set on a highlight group.
+local GUI_OPTIONS = {
+    'blend',
+    'font',
+}
+
+--- The keys that are allowed to be set on a group definition.
+local ALLOWED_KEYS = vim.tbl_flatten({ COLOR_OPTIONS, VIRTUAL_OPTIONS, GUI_OPTIONS, vim.tbl_keys(GUI_FLAGS) })
+
+--- Convert a raw color number (from `nvim_get_hl`) to a hex string.
+---
+---@param raw number
+local function raw_color_to_hex(raw)
+    return string.format("#%06x", raw)
 end
 
----@class Group
----@field is_highlight_group true
+---@class GroupAttributes
+---@field fg Color|string|nil
+---@field bg Color|string|nil
+---@field blend number?
+---@field font string?
+---@field bold boolean?
+---@field standout boolean?
+---@field underline boolean?
+---@field undercurl boolean?
+---@field underdouble boolean?
+---@field underdotted boolean?
+---@field underdashed boolean?
+---@field strikethrough boolean?
+---@field italic boolean?
+---@field reverse boolean?
+---@field nocombine boolean?
+
+---@class GroupDef
+---@field new fun(name: string, obj: table?): GroupDef
+---@field is_highlight_group boolean
 ---@field name string
----@field get_colorscheme fun(): Colorscheme?
----@field new fun(self: Group, name: string, obj: table?): Group
----@field __call fun(self: Group, attrs: table)
----@field get_link fun(self: Group): Group|string|nil
----@field has_combo_link fun(self: Group): boolean
----@field lookup_hl fun(self: Group, key: string): string|nil
----@field to_definition_map fun(self: Group): table
----@field fg Color?
----@field bg Color?
----@field gui string?
+---@field attributes GroupAttributes
+---@field links GroupDef[]
+---@field __call fun(self: GroupDef, attrs: table)
+---@field set fun(self: GroupDef, key: string, value: any): GroupDef Set the given attribute to the given value
+---@field is_combo_link fun(self: GroupDef): boolean Is a link present along with other attributes?
+---@field _fold_links fun(self: GroupDef): table Fold all the links into a single table
+---@field is_pure_link fun(self: GroupDef): boolean Is a single link present without any other attributes?
+---@field from_hi fun(name: string): GroupDef?  Create a new group definition from an existing highlight group fetched with `nvim_get_hl`
+---@field to_hl fun(self: GroupDef): table Convert the group definition to a table suitable for `nvim_set_hl`
 
----@type Group
-M.Group = { ---@diagnostic disable-line: missing-fields
+---@type GroupDef
+M.GroupDef = { ---@diagnostic disable-line: missing-fields
+    new = function(name, obj)
+        -- We do this rather than the typical idiom of:
+        --
+        -- ```lua
+        -- function new(obj)
+        --     obj = obj or {}
+        --     ...
+        -- end
+        -- ```
+        --
+        -- ...because then we can just reuse all the input parsing used in
+        -- `__call` and `set`.
+        local new = {}
+        new.name = name
+        new.attributes = {}
+        new.links = {}
+
+        setmetatable(new, M.GroupDef)
+
+        -- if we're given an object, we'll use it to set the initial attributes
+        if obj then
+            new(obj)
+        end
+
+        return new
+    end,
+
     is_highlight_group = true,
-    get_colorscheme = function()
-        return nil
-    end,
 
-    new = function(self, name, obj)
-        obj = obj or {}
-        obj.name = name
-        setmetatable(obj, self)
-
-        return obj
-    end,
-
-    __call = function(table, attrs)
+    __call = function(self, attrs)
         if vim.tbl_count(attrs) == 0 then
-            print("Warning: Highlight group '" .. table.name .. "' has an empty attribute table.")
+            vim.notify("[polychrome] Highlight group '" .. self.name .. "' has an empty attribute table.",
+                vim.log.levels.WARN)
         end
 
-        for key, value in pairs(attrs) do
-            rawset(table, key, value)
+        -- vim.iter.each walks both list and dict-like keys in tables
+        vim.iter(pairs(attrs)):each(function(key, value)
+            self:set(key, value)
+        end)
+    end,
+
+    set = function(self, key, value)
+        if not (vim.tbl_contains(ALLOWED_KEYS, key) or type(key) == "number") then
+            vim.notify("[polychrome] Invalid attribute '" .. key .. "' for highlight group '" .. self.name .. "'.",
+                vim.log.levels.WARN)
+            goto finish
         end
+
+        -- you can pass links by not specifying a key, and at the end we'll either:
+        --   a) set it to the `link` key if it's the only key and no other attributes are set
+        --   b) fold all the links into a single table if there are multiple
+        if type(key) == "number" then
+            table.insert(self.links, value)
+
+            goto finish
+        end
+
+        -- passing a `gui` key with a comma-separated list of flags is
+        -- allowed, but we parse it out to the actual separate keys
+        if key == 'gui' then
+            -- split the list
+            local parts = vim.iter(vim.split(value, ','))
+
+            -- sanity check to make sure we don't accidentally infinitely
+            -- recurse if someone passes `gui = 'gui'`
+            local flags = parts:filter(function(flag) return flag ~= 'gui' end)
+
+            -- set each flag
+            flags:each(function(flag)
+                self:set(flag, true)
+            end)
+
+            -- avoid setting the `gui` key itself
+            goto finish
+        end
+
+        -- convert raw color numbers to hex strings
+        -- probably unnecessary? but may be useful for debugging
+        if vim.tbl_contains(COLOR_OPTIONS, key) and type(value) == "number" then
+            value = raw_color_to_hex(value)
+        end
+
+        rawset(self.attributes, key, value)
+
+        ::finish::
+        return self
+    end,
+
+    is_combo_link = function(self)
+        local link_count = vim.tbl_count(self.links)
+        local have_multiple_links = link_count > 1
+        local has_attributes = vim.tbl_count(self.attributes) > 0
+
+        return have_multiple_links or (link_count > 0 and has_attributes)
+    end,
+
+    is_pure_link = function(self)
+        return vim.tbl_count(self.links) == 1 and vim.tbl_count(self.attributes) == 0
+    end,
+
+    from_hi = function(name)
+        local group = vim.api.nvim_get_hl(0, { name = name })
+
+        return M.GroupDef.new(name, group)
+    end,
+
+    _fold_links = function(self)
+        -- if we have a combo link, we unroll all the links and combine them
+        return vim.iter(ipairs(self.links)):map(function(_, link)
+            return link:to_hl()
+        end):fold({}, function(acc, hl)
+            return vim.tbl_extend('force', acc, hl)
+        end)
+    end,
+
+    to_hl = function(self)
+        -- If we only have a single link and no other attributes, we want to
+        -- use Neovim's built-in `link` key. We want to avoid using `link`
+        -- in any other cases because when `link` is present, (Neo)vim will
+        -- ignore any other properties we've passed in.
+        --
+        -- Getting rid of this special case at the beginning makes it so that
+        -- if we progress past this point, we're dealing with a combo link or
+        -- no link at all, and can just fold them all together without
+        -- restraint (because no links will fold down into an empty table).
+        if self:is_pure_link() then
+            return { link = self.links[1].name }
+        end
+
+        local base = self:_fold_links()
+        local attrs = vim.iter(pairs(self.attributes))
+
+        -- transform the attributes table into a table suitable for `nvim_set_hl`
+        local mapped = attrs:fold(base, function(acc, key, value)
+            if type(value) == "table" then
+                if value.is_color_object then
+                    -- convert color objects to sRGB hex strings
+                    value = value:hex()
+                elseif value.is_highlight_group then
+                    -- for groups, we'll just use the name
+                    value = value.name
+                end
+            end
+            acc[key] = value
+
+            return acc
+        end)
+
+        return mapped
     end,
 
     __index = function(self, key)
-        -- check link for attributes if present
-        if HL_NAME_MAPPING[key] ~= nil then
-            local link = getmetatable(self).get_link(self)
-            if link then
-                return link[key]
+        -- if we're looking for the `gui` key, we'll return a comma-separated
+        -- list of all the GUI flags that are set
+        if key == 'gui' then
+            local flags = vim.iter(GUI_FLAGS):map(function(flag)
+                return self.attributes[flag] and flag or nil
+            end):filter(function(flag)
+                return flag ~= nil
+            end)
+
+            return flags:join(',')
+        end
+
+        -- check this table directly
+        local on_this = rawget(self, key)
+        if on_this ~= nil then
+            return on_this
+        end
+
+        -- then check the attributes table
+        local attributes = rawget(self, 'attributes')
+        if attributes ~= nil and attributes[key] ~= nil then
+            return attributes[key]
+        end
+
+        -- then check the metatable
+        local metatable = getmetatable(self)
+        if metatable ~= nil and metatable[key] ~= nil then
+            return metatable[key]
+        end
+
+        -- then check all the links in order
+        for _, link in ipairs(self.links) do
+            local value = link[key]
+            if value ~= nil then
+                return value
             end
         end
 
-        return getmetatable(self)[key]
-    end,
-
-    get_link = function(self)
-        return self[1]
-    end,
-
-    lookup_hl = function(self, key)
-        return get_hl_attr(self:get_link(), key)
-    end,
-
-    has_combo_link = function(self)
-        -- check if
-        local present_attrs = vim.tbl_map(function(attr) return rawget(self, attr) ~= nil end, { 'fg', 'bg', 'gui' })
-        local has_another_attr = vim.tbl_contains(present_attrs, true)
-        return self:get_link() ~= nil and has_another_attr
-    end,
-
-    ---@see docs :h nvim_set_hl
-    to_definition_map = function(self)
-        local map = {}
-
-        local link = self:get_link()
-        if link then
-            if self:has_combo_link() then -- unroll the link and pass all the properties directly
-                map.fg = self:lookup_hl('fg')
-                map.bg = self:lookup_hl('bg')
-                map.gui = self:lookup_hl('gui')
-            else -- create a normal link
-                map.link = type(link) == "string" and link or link.name
-            end
-        end
-
-        for _, prop in ipairs({ 'fg', 'bg' }) do
-            if self[prop] ~= nil then
-                map[prop] = self[prop].is_color_object and self[prop]:hex() or self[prop]
-            end
-        end
-
-        if self.gui ~= nil then
-            map[self.gui] = true
-        end
-
-        return map
+        return nil
     end,
 }
 
 ---@class Options
----@field inject_gui_groups boolean|nil  Should some default groups be automatically defined?
+---@field inject_gui_groups boolean|nil Should some default groups be automatically defined?
 
 ---@class Colorscheme
 ---@field name string
----@field groups { [string]: Group }
----@field new fun(self: Colorscheme, name: string): Colorscheme
----@field define fun(name: string, definition: fun(_: fun()), options: Options|nil): Colorscheme  Define a new colorscheme
----@field apply fun(self: Colorscheme)  Apply the created colorscheme
----@field extend fun(self: Colorscheme, func: fun(_: fun()))  Run the given function with a modified global environment to enable use of our DSL
----@field _register_group fun(self: Colorscheme, group_name: string): Group  Register a group to the colorscheme
----@field _inject_gui_features fun(self: Colorscheme)  Register some sensible default groups
+---@field groups { [string]: GroupDef }
+---@field new fun(name: string): Colorscheme
+---@field define fun(name: string, definition: fun(_: fun()), options: Options|nil): Colorscheme Define a new colorscheme
+---@field apply fun(self: Colorscheme) Apply the created colorscheme
+---@field clone_as fun(self: Colorscheme, name: string): Colorscheme Apply the created colorscheme
+---@field extend fun(self: Colorscheme, func: fun(_: fun())) Run the given function with a modified global environment to enable use of our DSL
+---@field _register_group fun(self: Colorscheme, group_name: string): GroupDef Register a group to the colorscheme
+---@field _inject_gui_features fun(self: Colorscheme) Register some sensible default groups
 
 ---@type Colorscheme
 M.Colorscheme = { ---@diagnostic disable-line: missing-fields
-    new = function(self, name)
+    new = function(name)
         local obj = {}
         obj.name = name
         obj.groups = {}
-        setmetatable(obj, self)
+
+        setmetatable(obj, M.Colorscheme)
 
         return obj
     end,
@@ -147,7 +311,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
             error("You must give the colorscheme a name.")
         end
 
-        local colorscheme = M.Colorscheme:new(name)
+        local colorscheme = M.Colorscheme.new(name)
 
         -- register the typical GUI features
         local skip_inject_gui = options.inject_gui_groups == false
@@ -176,11 +340,11 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
         for name, group in pairs(self.groups) do
             local ok, result = pcall(function()
-                vim.api.nvim_set_hl(0, name, group:to_definition_map())
+                vim.api.nvim_set_hl(0, name, group:to_hl())
             end)
 
             if not ok then
-                print('Error defining "' .. name .. '": ' .. result)
+                vim.notify('[polychrome] Error defining "' .. name .. '": ' .. result, vim.log.levels.ERROR)
             end
         end
     end,
@@ -224,17 +388,20 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
         return func(register)
     end,
 
+    clone_as = function(self, name)
+        local clone = M.Colorscheme.new(name)
+        clone.groups = vim.deepcopy(self.groups)
+
+        return clone
+    end,
+
     _register_group = function(self, group_name)
         local existing = self.groups[group_name]
         if existing then
             return existing
         end
 
-        local group = M.Group:new(group_name)
-        -- Allow the group to access the colorscheme context
-        group.get_colorscheme = function()
-            return self
-        end
+        local group = M.GroupDef.new(group_name)
         -- register the group to the scheme
         rawset(self.groups, group_name, group)
 
@@ -246,16 +413,10 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
     _inject_gui_features = function(self)
         ---@diagnostic disable: undefined-global
         return self:extend(function()
-            Strikethrough { gui = "strikethrough" }
-            Underline { gui = "underline" }
-            Underdouble { gui = "underdouble" }
-            Undercurl { gui = "undercurl" }
-            Underdotted { gui = "underdotted" }
-            Underdashed { gui = "underdashed" }
-            Reverse { gui = "reverse" }
-            Standout { gui = "standout" }
-            Bold { gui = "bold" }
-            Italic { gui = "italic" }
+            -- register the GUI features
+            for feature, hl_name in pairs(GUI_FLAGS) do
+                _(hl_name) { [feature] = true }
+            end
         end)
     end,
 }
