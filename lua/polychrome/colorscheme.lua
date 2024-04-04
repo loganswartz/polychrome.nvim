@@ -74,13 +74,14 @@ end
 ---@field name string
 ---@field attributes GroupAttributes
 ---@field links GroupDef[]
+---@field _was_defined boolean
 ---@field __call fun(self: GroupDef, attrs: table)
 ---@field set fun(self: GroupDef, key: string, value: any): GroupDef Set the given attribute to the given value
 ---@field is_combo_link fun(self: GroupDef): boolean Is a link present along with other attributes?
 ---@field _fold_links fun(self: GroupDef): table Fold all the links into a single table
 ---@field is_pure_link fun(self: GroupDef): boolean Is a single link present without any other attributes?
 ---@field from_hi fun(name: string): GroupDef?  Create a new group definition from an existing highlight group fetched with `nvim_get_hl`
----@field to_hl fun(self: GroupDef): table Convert the group definition to a table suitable for `nvim_set_hl`
+---@field to_hl fun(self: GroupDef, resolve: boolean?): table Convert the group definition to a table suitable for `nvim_set_hl`
 
 ---@type GroupDef
 M.GroupDef = { ---@diagnostic disable-line: missing-fields
@@ -100,6 +101,7 @@ M.GroupDef = { ---@diagnostic disable-line: missing-fields
         new.name = name
         new.attributes = {}
         new.links = {}
+        new._was_defined = false
 
         setmetatable(new, M.GroupDef)
 
@@ -114,9 +116,12 @@ M.GroupDef = { ---@diagnostic disable-line: missing-fields
     is_highlight_group = true,
 
     __call = function(self, attrs)
-        if vim.tbl_count(attrs) == 0 then
-            vim.notify("[polychrome] Highlight group '" .. self.name .. "' has an empty attribute table.",
+        -- if this group was already defined, we'll warn the user
+        if self._was_defined == true then
+            vim.notify("[polychrome] Highlight group '" .. self.name .. "' was defined multiple times.",
                 vim.log.levels.WARN)
+        else
+            self._was_defined = true
         end
 
         -- vim.iter.each walks both list and dict-like keys in tables
@@ -193,13 +198,41 @@ M.GroupDef = { ---@diagnostic disable-line: missing-fields
     _fold_links = function(self)
         -- if we have a combo link, we unroll all the links and combine them
         return vim.iter(ipairs(self.links)):map(function(_, link)
-            return link:to_hl()
+            -- When folding links, we always want to resolve them to their
+            -- effective form. Consider this example:
+            --
+            -- ```lua
+            -- LspError { Error }
+            -- LspDiagnosticError { LspError }
+            -- LspUnderlinedDiagnosticError { LspDiagnosticError, Underlined }
+            -- ```
+            --
+            -- If we were to naively fold the links for `LspUnderlinedError`,
+            -- we'd get:
+            --
+            -- ```lua
+            -- LspError { Error }
+            -- -- because it's a pure link, evaluates to: { link = 'Error' }
+            --
+            -- Underline { underline = true }
+            -- -- evaluates to: { underline = true }
+            --
+            -- LspUnderlinedError { LspError, Underlined }
+            -- -- when folded, evaluates to: { link = 'LspError', underline = true }
+            -- ```
+            --
+            -- So, any nested pure links end up contaminating the final folded
+            -- result, since (Neo)vim ignores any other properties if a `link`
+            -- is present. Hence, we resolve any nested links if the this is
+            -- not a pure link itself.
+            return link:to_hl(true)
         end):fold({}, function(acc, hl)
             return vim.tbl_extend('force', acc, hl)
         end)
     end,
 
-    to_hl = function(self)
+    ---@param resolve boolean|nil Should we resolve/unroll nested links?
+    to_hl = function(self, resolve)
         -- If we only have a single link and no other attributes, we want to
         -- use Neovim's built-in `link` key. We want to avoid using `link`
         -- in any other cases because when `link` is present, (Neo)vim will
@@ -209,7 +242,7 @@ M.GroupDef = { ---@diagnostic disable-line: missing-fields
         -- if we progress past this point, we're dealing with a combo link or
         -- no link at all, and can just fold them all together without
         -- restraint (because no links will fold down into an empty table).
-        if self:is_pure_link() then
+        if not resolve and self:is_pure_link() then
             return { link = self.links[1].name }
         end
 
@@ -278,14 +311,15 @@ M.GroupDef = { ---@diagnostic disable-line: missing-fields
     end,
 }
 
----@class Options
+---@class ColorschemeConfig
 ---@field inject_gui_groups boolean|nil Should some default groups be automatically defined?
 
 ---@class Colorscheme
 ---@field name string
 ---@field groups { [string]: GroupDef }
----@field new fun(name: string): Colorscheme
----@field define fun(name: string, definition: fun(_: fun()), options: Options|nil): Colorscheme Define a new colorscheme
+---@field config ColorschemeConfig
+---@field new fun(name: string, config: ColorschemeConfig|nil): Colorscheme
+---@field define fun(name: string, definition: fun(_: fun()), config: ColorschemeConfig|nil): Colorscheme Define a new colorscheme
 ---@field apply fun(self: Colorscheme) Apply the created colorscheme
 ---@field clone_as fun(self: Colorscheme, name: string): Colorscheme Apply the created colorscheme
 ---@field extend fun(self: Colorscheme, func: fun(_: fun())) Run the given function with a modified global environment to enable use of our DSL
@@ -294,10 +328,11 @@ M.GroupDef = { ---@diagnostic disable-line: missing-fields
 
 ---@type Colorscheme
 M.Colorscheme = { ---@diagnostic disable-line: missing-fields
-    new = function(name)
+    new = function(name, config)
         local obj = {}
         obj.name = name
         obj.groups = {}
+        obj.config = config or {}
 
         setmetatable(obj, M.Colorscheme)
 
@@ -305,16 +340,15 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
     end,
 
     -- Define a new colorscheme.
-    define = function(name, definition, options)
-        options = options or {}
+    define = function(name, definition, config)
         if (name == nil) then
             error("You must give the colorscheme a name.")
         end
 
-        local colorscheme = M.Colorscheme.new(name)
+        local colorscheme = M.Colorscheme.new(name, config)
 
         -- register the typical GUI features
-        local skip_inject_gui = options.inject_gui_groups == false
+        local skip_inject_gui = colorscheme.config.inject_gui_groups == false
         -- don't apply if explicitly disabled
         if not skip_inject_gui then
             colorscheme:_inject_gui_features()
@@ -340,12 +374,29 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
         for name, group in pairs(self.groups) do
             local ok, result = pcall(function()
-                vim.api.nvim_set_hl(0, name, group:to_hl())
+                local hl = group:to_hl()
+                self._check_notify_empty_group(hl, name)
+
+                vim.api.nvim_set_hl(0, name, hl)
             end)
 
             if not ok then
                 vim.notify('[polychrome] Error defining "' .. name .. '": ' .. result, vim.log.levels.ERROR)
             end
+        end
+    end,
+
+    _check_notify_empty_group = function(hl, name)
+        local empty = vim.tbl_count(hl) == 0
+
+        if empty then
+            vim.notify(
+                "[polychrome] Highlight group '" ..
+                name ..
+                "' has no attributes. Likely, this means some group is linked to '" ..
+                name .. "', but '" .. name .. "' was never defined.",
+                vim.log.levels.INFO
+            )
         end
     end,
 

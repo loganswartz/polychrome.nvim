@@ -96,8 +96,10 @@ local function apply_colorscheme()
 end
 
 local function apply_preview()
-    apply_colorscheme()
-    apply_highlights()
+    pcall(function()
+        apply_colorscheme()
+        apply_highlights()
+    end)
 end
 
 local function clear_preview()
