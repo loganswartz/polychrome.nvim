@@ -156,4 +156,46 @@ function M.sign(x)
     end
 end
 
+---@class M.Set
+---@field new fun(self: M.Set, ...: string[]): M.Set
+---@field add fun(self: M.Set, ...: string[])
+---@field remove fun(self: M.Set, ...: string[])
+---@field has fun(self: M.Set, value: string): boolean
+---@field tolist fun(self: M.Set): string[]
+M.Set = {
+    new = function(self, ...)
+        local args = { ... }
+        local obj = {}
+
+        setmetatable(obj, self)
+
+        obj:add(unpack(args))
+
+        return obj
+    end,
+
+    add = function(self, ...)
+        local args = { ... }
+        for _, value in ipairs(args) do
+            self[value] = true
+        end
+    end,
+
+    remove = function(self, ...)
+        local args = { ... }
+        for _, value in ipairs(args) do
+            self[value] = nil
+        end
+    end,
+
+    has = function(self, value)
+        return self[value] ~= nil
+    end,
+
+    tolist = function(self)
+        return vim.tbl_keys(self)
+    end,
+}
+M.Set.__index = M.Set
+
 return M

@@ -1,3 +1,4 @@
+local diagnostics = require "polychrome.diagnostics"
 local M = {}
 
 --- The options that hold the actual color values.
@@ -118,8 +119,11 @@ M.Group = { ---@diagnostic disable-line: missing-fields
 
     set = function(self, key, value)
         if not (vim.tbl_contains(M.ALLOWED_KEYS, key) or type(key) == "number") then
-            vim.notify("[polychrome] Invalid attribute '" .. key .. "' for highlight group '" .. self.name .. "'.",
-                vim.log.levels.WARN)
+            diagnostics.add({ {
+                type = diagnostics.ERROR_TYPES.INVALID_ATTRIBUTE,
+                message = "Invalid attribute: '" .. key .. "'",
+                group = self,
+            } })
             goto finish
         end
 

@@ -118,8 +118,8 @@ function M.StartPreview(throttle_ms)
     HL_NAMESPACE = vim.api.nvim_create_namespace('polychrome_preview')
     AUGROUP_ID = vim.api.nvim_create_augroup('polychrome', { clear = true })
     vim.api.nvim_create_autocmd({
-        'InsertLeave',
         'TextChanged',
+        'TextChangedI',
         'TextChangedP',
         'TextChangedT',
     }, {
