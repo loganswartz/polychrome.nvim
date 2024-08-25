@@ -131,7 +131,7 @@ M.DIAGNOSTICS = DiagnosticManager:new()
 ---@param node TSNode
 ---@return TSNodeRange
 local function to_range(node)
-    local values = table.pack(node:range())
+    local values = { node:range() }
     return {
         row = values[1],
         col = values[2],
