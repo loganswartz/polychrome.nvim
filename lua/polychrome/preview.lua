@@ -74,18 +74,14 @@ local function apply_colorscheme()
     -- load current file
     ---@type Colorscheme|true|nil
     POLYCHROME_EDITING = true
-    local definition, err = load(utils.read_buffer(0))
+    local definition = load(utils.read_buffer(0))
     if not definition then
-        if err then
-            vim.notify(err)
-        end
         return -- not runnable
     end
 
     -- run it
-    local ok, result = pcall(definition)
+    local ok = pcall(definition)
     if not ok then
-        vim.notify(result)
         return
     end
 
@@ -116,8 +112,7 @@ local function clear_preview()
 end
 
 --- Activate a live preview of the colorscheme.
----@param throttle_ms number|nil
-function M.StartPreview(throttle_ms)
+function M.StartPreview()
     PREVIOUS_COLORSCHEME = vim.g.colors_name
 
     -- start with a clean slate

@@ -1,5 +1,3 @@
-local Set = require('polychrome.utils').Set
-
 local M = {}
 
 ---@alias PositionKey string
@@ -20,8 +18,8 @@ local M = {}
 --- A manager for diagnostics, that dedupes and applies diagnostics to the buffer
 ---
 ---@class DiagnosticManager
----@field _diagnostic_to_position_key fun(diagnostic: vim.Diagnostic): PositionKey
----@field _position_key_to_diagnostic fun(key: PositionKey, message: string, severity: vim.diagnostic.Severity|nil): vim.Diagnostic
+---@field _diagnostics vim.Diagnostic[]
+---@field _diagnostics_are_equivalent fun(a: vim.Diagnostic, b: vim.Diagnostic): boolean
 ---@field add fun(self: DiagnosticManager, diagnostics: vim.Diagnostic[])
 ---@field remove fun(self: DiagnosticManager, diagnostics: vim.Diagnostic[])
 ---@field clear fun(self: DiagnosticManager)
@@ -30,64 +28,60 @@ local M = {}
 local DiagnosticManager = {
     new = function(self)
         local obj = {}
+        obj._diagnostics = {}
 
         setmetatable(obj, self)
 
         return obj
     end,
 
-    _diagnostic_to_position_key = function(diagnostic)
-        return ('%d:%d:%d:%d'):format(diagnostic.lnum, diagnostic.col, diagnostic.end_lnum, diagnostic.end_col)
-    end,
-
-    _position_key_to_diagnostic = function(key, message, severity)
-        local function parse(value)
-            if value == '' then
-                return nil
+    _diagnostics_are_equivalent = function(a, b)
+        for key, value in pairs(a) do
+            if value ~= b[key] then
+                return false
             end
-            return tonumber(value)
         end
 
-        local lnum, col, end_lnum, end_col = key:match('(%d+):(%d+):(%d+):(%d+)')
-        return {
-            lnum = parse(lnum),
-            col = parse(col),
-            end_lnum = parse(end_lnum),
-            end_col = parse(end_col),
-            message = message,
-            severity = severity or vim.diagnostic.severity.ERROR,
-        }
+        return true
+    end,
+
+    has = function(self, diagnostic)
+        for _, existing in ipairs(self._diagnostics) do
+            if self._diagnostics_are_equivalent(diagnostic, existing) then
+                return true
+            end
+        end
+
+        return false
     end,
 
     add = function(self, diagnostics)
         for _, diagnostic in ipairs(diagnostics) do
-            local key = self._diagnostic_to_position_key(diagnostic)
-            if not self[key] then
-                self[key] = Set:new()
+            if not self:has(diagnostic) then
+                table.insert(self._diagnostics, diagnostic)
             end
-
-            self[key]:add(diagnostic.message)
-        end
-    end,
-
-    remove = function(self, diagnostics)
-        for _, diagnostic in ipairs(diagnostics) do
-            local key = self._diagnostic_to_position_key(diagnostic)
-
-            if self[key] == nil then
-                return
-            end
-
-            self[key]:remove(diagnostic.message)
         end
 
         self:apply()
     end,
 
-    clear = function(self)
-        for key in pairs(self) do
-            self[key] = nil
+    remove = function(self, diagnostics)
+        local to_keep = {}
+
+        for _, diagnostic in ipairs(diagnostics) do
+            for _, existing in ipairs(self._diagnostics) do
+                if not self._diagnostics_are_equivalent(diagnostic, existing) then
+                    table.insert(to_keep, existing)
+                end
+            end
         end
+
+        self._diagnostics = to_keep
+        self:apply()
+    end,
+
+    clear = function(self)
+        self._diagnostics = {}
         self:apply()
     end,
 
@@ -106,17 +100,7 @@ local DiagnosticManager = {
     end),
 
     get = function(self)
-        local diagnostics = {}
-
-        for location, messages in pairs(self) do
-            for _, message in ipairs(messages:tolist()) do
-                local created = self._position_key_to_diagnostic(location, message)
-
-                table.insert(diagnostics, created)
-            end
-        end
-
-        return diagnostics
+        return self._diagnostics
     end,
 
     __len = function(self)
@@ -204,6 +188,12 @@ M.ERROR_TYPES = {
     INVALID_ATTRIBUTE = 2,
 }
 
+---@type table<ErrorType, vim.diagnostic.Severity>
+M.ERROR_SEVERITIES = {
+    [M.ERROR_TYPES.INVALID_COLOR] = vim.diagnostic.severity.WARN,
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE] = vim.diagnostic.severity.WARN,
+}
+
 ---@type table<ErrorType, fun(error: ErrorBag): string>
 M.ERROR_MESSAGES = {
     [M.ERROR_TYPES.INVALID_COLOR] = function(error)
@@ -232,25 +222,31 @@ M.REFINE_ERROR_LOCATION = {
 local function create_diagnostics_from_error(error)
     ---@type vim.Diagnostic[]
     local diagnostics = {}
-    local ranges = M.REFINE_ERROR_LOCATION[error.type](error)
+
+    local refiner = M.REFINE_ERROR_LOCATION[error.type]
+    local ranges = refiner and refiner(error) or {}
 
     -- use the original error location if we couldn't find a better one
     if #ranges == 0 then
         table.insert(ranges, {
-            row = error.group._definition_locations[1].currentline or 0,
+            row = error.group and error.group._definition_locations[1].currentline or 0,
             col = 0,
         })
     end
 
     for _, location in ipairs(ranges) do
-        table.insert(diagnostics, {
+        ---@type vim.Diagnostic
+        local new = {
             message = M.ERROR_MESSAGES[error.type](error),
-            severity = vim.diagnostic.severity.ERROR,
+            source = 'polychrome',
+            namespace = M.DIAGNOSTIC_NAMESPACE,
+            severity = M.ERROR_SEVERITIES[error.type],
             lnum = location.row,
             col = location.col,
             end_lnum = location.end_row or location.row,
             end_col = location.end_col or location.col,
-        })
+        }
+        table.insert(diagnostics, new)
     end
 
     return diagnostics

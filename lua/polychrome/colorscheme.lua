@@ -72,7 +72,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
         vim.g.colors_name = self.name
 
-        local errors = vim.iter({})
+        local errors = {}
         for name, group in pairs(self.groups) do
             local ok, result = pcall(function()
                 local hl = group:to_hl()
