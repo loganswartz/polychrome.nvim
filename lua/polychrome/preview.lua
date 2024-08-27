@@ -113,10 +113,10 @@ end
 
 --- Activate a live preview of the colorscheme.
 function M.StartPreview()
-    PREVIOUS_COLORSCHEME = vim.g.colors_name
-
     -- start with a clean slate
-    clear_preview()
+    M.StopPreview()
+
+    PREVIOUS_COLORSCHEME = vim.g.colors_name
 
     -- register the live preview
     AUGROUP_ID = vim.api.nvim_create_augroup('polychrome_preview', { clear = true })
