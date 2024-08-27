@@ -1,4 +1,5 @@
 local color = require('polychrome.color')
+local diagnostics = require('polychrome.diagnostics')
 local utils = require('polychrome.utils')
 local Group = require('polychrome.group').Group
 local GUI_FLAGS = require('polychrome.group').GUI_FLAGS
@@ -42,6 +43,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
         if (name == nil) then
             error("You must give the colorscheme a name.")
         end
+        diagnostics.clear()
 
         local colorscheme = M.Colorscheme.new(name, config)
 
@@ -70,6 +72,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
         vim.g.colors_name = self.name
 
+        local errors = {}
         for name, group in pairs(self.groups) do
             local ok, result = pcall(function()
                 local hl = group:to_hl()
@@ -78,9 +81,16 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
             end)
 
             if not ok then
-                vim.notify('[polychrome] Error defining "' .. name .. '": ' .. result, vim.log.levels.ERROR)
+                table.insert(errors, {
+                    type = diagnostics.ERROR_TYPES.INVALID_COLOR,
+                    message = result,
+                    group = group,
+                })
             end
         end
+
+        diagnostics.add(errors)
+        diagnostics.show(self)
     end,
 
     extend = function(self, func)
@@ -181,7 +191,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
         local function all_groups_defined_exactly_once()
             local redefined = groups_where(function(_, group)
-                return group._definition_count > 1
+                return vim.tbl_count(group._definition_locations) > 1
             end)
 
             if vim.tbl_count(redefined) == 0 then
@@ -191,7 +201,8 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
 
             for name, group in pairs(redefined) do
                 vim.health.warn(
-                    "Highlight group '" .. name .. "' was defined " .. group._definition_count .. " times."
+                    "Highlight group '" ..
+                    name .. "' was defined " .. vim.tbl_count(group._definition_locations) .. " times."
                 )
             end
         end

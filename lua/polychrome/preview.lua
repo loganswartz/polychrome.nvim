@@ -1,12 +1,13 @@
 local utils = require('polychrome.utils')
+local diagnostics = require('polychrome.diagnostics')
 
 local M = {}
 
-local HL_NAMESPACE = nil
+local PREVIEW_NAMESPACE = vim.api.nvim_create_namespace('polychrome_preview')
 --- The ID of the augroup for our autocommands
 local AUGROUP_ID = nil
---- Number of the buffer the live preview was activated on
-local BUFNR = nil
+---@type string|nil
+local PREVIOUS_COLORSCHEME = nil
 
 -- whitespace or quote mark directly before start of name
 local _HL_NAME_LEADING_PATTERN = [=[[%s"']]=]
@@ -19,13 +20,13 @@ local HL_NAME_REGEX = _HL_NAME_LEADING_PATTERN .. _HL_NAME_CAPTURE .. _HL_NAME_T
 local COLOR_REGEX = [[(%w+)%(([%d%.]+)%s*,%s*([%d%.]+)%s*,%s*([%d%.]+)%s*%)]]
 
 local function clear_highlights()
-    pcall(vim.api.nvim_buf_clear_namespace, BUFNR, HL_NAMESPACE, 0, -1)
+    pcall(vim.api.nvim_buf_clear_namespace, 0, PREVIEW_NAMESPACE, 0, -1)
 end
 
 local function apply_hl_group_name_hl(groups, line_nr, line)
     local start, _end, match = line:find(HL_NAME_REGEX)
     if match and groups[match] ~= nil then
-        vim.api.nvim_buf_add_highlight(BUFNR, HL_NAMESPACE, match, line_nr - 1, start or 0, _end - 1 or -1)
+        vim.api.nvim_buf_add_highlight(0, PREVIEW_NAMESPACE, match, line_nr - 1, start or 0, _end - 1 or -1)
     end
 end
 
@@ -35,13 +36,17 @@ local function apply_color_obj_hl(groups, line_nr, line)
     if start ~= nil then
         name = string.lower(name)
 
-        local class = require('polychrome')[name]
+        local class = require('polychrome.color')[name]
         if class.is_color_object then
             local color = class(tonumber(a), tonumber(b), tonumber(c))
+            if not color then
+                return
+            end
+
             local hl_name = table.concat({ name, a, b, c }, '')
 
             vim.api.nvim_set_hl(0, hl_name, { fg = 'black', bg = color:hex() })
-            vim.api.nvim_buf_add_highlight(BUFNR, HL_NAMESPACE, hl_name, line_nr - 1, start - 1, _end or -1)
+            vim.api.nvim_buf_add_highlight(0, PREVIEW_NAMESPACE, hl_name, line_nr - 1, start - 1, _end or -1)
         end
     end
 end
@@ -49,7 +54,7 @@ end
 --- Highlight all currently-defined highlight groups
 local function apply_highlights()
     local groups = utils.get_highlight_groups()
-    local lines = vim.api.nvim_buf_get_lines(BUFNR or 0, 0, -1, false)
+    local lines = vim.api.nvim_buf_get_lines(0 or 0, 0, -1, false)
 
     for idx, line in ipairs(lines) do
         apply_hl_group_name_hl(groups, idx, line)
@@ -60,7 +65,7 @@ end
 --- Extract a colorscheme from the current buffer.
 local function apply_colorscheme()
     if vim.bo.filetype ~= 'lua' then
-        print('[polychrome] Cannot live reload colorscheme because it is not a Lua file!')
+        vim.notify('[polychrome] Cannot live reload colorscheme because it is not a Lua file!')
     end
 
     -- clear any previous matches
@@ -69,22 +74,20 @@ local function apply_colorscheme()
     -- load current file
     ---@type Colorscheme|true|nil
     POLYCHROME_EDITING = true
-    local definition, result = load(utils.read_buffer(BUFNR))
+    local definition = load(utils.read_buffer(0))
     if not definition then
-        print(result)
         return -- not runnable
     end
 
     -- run it
-    local ok, result = pcall(definition)
+    local ok = pcall(definition)
     if not ok then
-        print(result)
         return
     end
 
     -- check if a definition was run in the file
     if POLYCHROME_EDITING == nil or POLYCHROME_EDITING == true then
-        print('[polychrome] Could not find a colorscheme through the current buffer!')
+        vim.notify('[polychrome] Could not find a colorscheme through the current buffer!')
         return
     end
 
@@ -104,26 +107,26 @@ end
 
 local function clear_preview()
     clear_highlights()
+    diagnostics.clear()
     pcall(vim.api.nvim_del_augroup_by_id, AUGROUP_ID)
 end
 
 --- Activate a live preview of the colorscheme.
----@param throttle_ms number|nil
-function M.StartPreview(throttle_ms)
+function M.StartPreview()
     -- start with a clean slate
-    clear_preview()
+    M.StopPreview()
+
+    PREVIOUS_COLORSCHEME = vim.g.colors_name
 
     -- register the live preview
-    BUFNR = vim.fn.bufnr()
-    HL_NAMESPACE = vim.api.nvim_create_namespace('polychrome_preview')
-    AUGROUP_ID = vim.api.nvim_create_augroup('polychrome', { clear = true })
+    AUGROUP_ID = vim.api.nvim_create_augroup('polychrome_preview', { clear = true })
     vim.api.nvim_create_autocmd({
-        'InsertLeave',
         'TextChanged',
+        'TextChangedI',
         'TextChangedP',
         'TextChangedT',
     }, {
-        buffer = BUFNR,
+        buffer = 0,
         group = AUGROUP_ID,
         callback = apply_preview,
     })
@@ -135,6 +138,11 @@ end
 --- Deactivate the live preview of the colorscheme.
 function M.StopPreview()
     clear_preview()
+
+    if PREVIOUS_COLORSCHEME ~= nil then
+        vim.cmd.colorscheme(PREVIOUS_COLORSCHEME)
+        PREVIOUS_COLORSCHEME = nil
+    end
 end
 
 return M

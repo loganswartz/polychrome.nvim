@@ -1,3 +1,4 @@
+local diagnostics = require "polychrome.diagnostics"
 local M = {}
 
 --- The options that hold the actual color values.
@@ -65,7 +66,7 @@ end
 ---@field name string
 ---@field attributes GroupAttributes
 ---@field links Group[]
----@field _definition_count number
+---@field _definition_locations debuginfo[]
 ---@field __call fun(self: Group, attrs: table)
 ---@field set fun(self: Group, key: string, value: any): Group Set the given attribute to the given value
 ---@field is_combo_link fun(self: Group): boolean Is a link present along with other attributes?
@@ -92,7 +93,7 @@ M.Group = { ---@diagnostic disable-line: missing-fields
         new.name = name
         new.attributes = {}
         new.links = {}
-        new._definition_count = 0
+        new._definition_locations = {}
 
         setmetatable(new, M.Group)
 
@@ -108,7 +109,7 @@ M.Group = { ---@diagnostic disable-line: missing-fields
 
     __call = function(self, attrs)
         -- used in health checks to see if a group was defined multiple times
-        self._definition_count = self._definition_count + 1
+        table.insert(self._definition_locations, debug.getinfo(4))
 
         -- vim.iter.each walks both list and dict-like keys in tables
         vim.iter(pairs(attrs)):each(function(key, value)
@@ -118,8 +119,11 @@ M.Group = { ---@diagnostic disable-line: missing-fields
 
     set = function(self, key, value)
         if not (vim.tbl_contains(M.ALLOWED_KEYS, key) or type(key) == "number") then
-            vim.notify("[polychrome] Invalid attribute '" .. key .. "' for highlight group '" .. self.name .. "'.",
-                vim.log.levels.WARN)
+            diagnostics.add({ {
+                type = diagnostics.ERROR_TYPES.INVALID_ATTRIBUTE,
+                message = "Invalid attribute: '" .. key .. "'",
+                group = self,
+            } })
             goto finish
         end
 
