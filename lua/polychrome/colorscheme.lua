@@ -2,7 +2,7 @@ local color = require('polychrome.color')
 local diagnostics = require('polychrome.diagnostics')
 local utils = require('polychrome.utils')
 local Group = require('polychrome.group').Group
-local GUI_FLAGS = require('polychrome.group').GUI_FLAGS
+local GUI_HIGHLIGHTS = require('polychrome.group').GUI_HIGHLIGHTS
 
 local M = {}
 
@@ -158,7 +158,7 @@ M.Colorscheme = { ---@diagnostic disable-line: missing-fields
         ---@diagnostic disable: undefined-global
         return self:extend(function()
             -- register the GUI features
-            for feature, hl_name in pairs(GUI_FLAGS) do
+            for feature, hl_name in pairs(GUI_HIGHLIGHTS) do
                 _(hl_name) { [feature] = true }
             end
         end)

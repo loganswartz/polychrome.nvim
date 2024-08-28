@@ -1,19 +1,43 @@
 local diagnostics = require "polychrome.diagnostics"
 local M = {}
 
+local function is_valid_color_value(value)
+    return type(value) == "string" or value.is_color_object == true
+end
+
+local function is_valid_gui_flag(value)
+    return type(value) == "boolean"
+end
+
+local function is_valid_gui_value(value)
+    return vim.tbl_contains(vim.tbl_keys(M.GUI_HIGHLIGHTS), value)
+end
+
+local function is_valid_blend(value)
+    return type(value) == "number" and value >= 0 and value <= 100
+end
+
+local function is_valid_font(value)
+    return type(value) == "string"
+end
+
+local function is_valid_link(value)
+    return value.is_highlight_group == true
+end
+
 --- The options that hold the actual color values.
 M.COLOR_OPTIONS = {
-    'fg',
-    'bg',
+    fg = is_valid_color_value,
+    bg = is_valid_color_value,
 }
 
 --- Options that can be set but will be translated to a different key / removed from the final object.
 M.VIRTUAL_OPTIONS = {
-    'gui',
+    gui = is_valid_gui_value,
 }
 
 --- A map of GUI flags to their corresponding highlight group keys.
-M.GUI_FLAGS = {
+M.GUI_HIGHLIGHTS = {
     bold = 'Bold',
     standout = 'Standout',
     underline = 'Underline',
@@ -27,15 +51,46 @@ M.GUI_FLAGS = {
     nocombine = 'Nocombine',
 }
 
+M.GUI_FLAGS = {
+    bold = is_valid_gui_flag,
+    standout = is_valid_gui_flag,
+    underline = is_valid_gui_flag,
+    undercurl = is_valid_gui_flag,
+    underdouble = is_valid_gui_flag,
+    underdotted = is_valid_gui_flag,
+    underdashed = is_valid_gui_flag,
+    strikethrough = is_valid_gui_flag,
+    italic = is_valid_gui_flag,
+    reverse = is_valid_gui_flag,
+    nocombine = is_valid_gui_flag,
+}
+
 --- The remaining (non-boolean) GUI options that can be set on a highlight group.
 M.GUI_OPTIONS = {
-    'blend',
-    'font',
+    blend = is_valid_blend,
+    font = is_valid_font,
 }
 
 --- The keys that are allowed to be set on a group definition.
-M.ALLOWED_KEYS = vim.iter({ M.COLOR_OPTIONS, M.VIRTUAL_OPTIONS, M.GUI_OPTIONS, vim.tbl_keys(M.GUI_FLAGS) }):flatten()
-    :totable()
+M.ALLOWED_OPTIONS = vim.iter({ M.COLOR_OPTIONS, M.VIRTUAL_OPTIONS, M.GUI_OPTIONS, M.GUI_FLAGS }):fold({},
+    function(acc, tbl)
+        for key, value in pairs(tbl) do
+            acc[key] = value
+        end
+
+        return acc
+    end)
+-- Override the metatable so any arbitrary numeric key lookup will return the
+-- link validator
+setmetatable(M.ALLOWED_OPTIONS, {
+    __index = function(self, key)
+        if type(key) == "number" then
+            return is_valid_link
+        end
+
+        return rawget(self, key)
+    end
+})
 
 --- Convert a raw color number (from `nvim_get_hl`) to a hex string.
 ---
@@ -119,16 +174,8 @@ M.Group = { ---@diagnostic disable-line: missing-fields
     end,
 
     set = function(self, key, value)
-        local is_valid_key = vim.tbl_contains(M.ALLOWED_KEYS, key) or type(key) == "number"
-
-        local is_valid_bg_fg_value = vim.tbl_contains(M.COLOR_OPTIONS, key) and
-            (value.is_color_object == true or type(value) == "string")
-        local is_valid_gui_flag = vim.tbl_contains(vim.tbl_keys(M.GUI_FLAGS), key) and type(value) == "boolean"
-        local is_valid_linked_group = type(key) == "number" and value.is_highlight_group == true
-        local is_valid_gui_option = vim.tbl_contains(M.GUI_OPTIONS, key) and
-            (type(value) == "number" or type(value) == "string")
-
-        local is_valid_value = is_valid_bg_fg_value or is_valid_gui_flag or is_valid_linked_group or is_valid_gui_option
+        local validator = M.ALLOWED_OPTIONS[key]
+        local is_valid_key = validator ~= nil
 
         if not is_valid_key then
             diagnostics.add({ {
@@ -138,7 +185,7 @@ M.Group = { ---@diagnostic disable-line: missing-fields
             } })
             goto finish
         end
-        if not is_valid_value then
+        if validator ~= nil and not validator(value) then
             diagnostics.add({ {
                 type = diagnostics.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE,
                 message = "Invalid attribute value for: '" .. key .. "'",
@@ -282,7 +329,7 @@ M.Group = { ---@diagnostic disable-line: missing-fields
         -- if we're looking for the `gui` key, we'll return a comma-separated
         -- list of all the GUI flags that are set
         if key == 'gui' then
-            local flags = vim.iter(M.GUI_FLAGS):map(function(flag)
+            local flags = vim.iter(M.GUI_HIGHLIGHTS):map(function(flag)
                 return self.attributes[flag] and flag or nil
             end):filter(function(flag)
                 return flag ~= nil
