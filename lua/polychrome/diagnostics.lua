@@ -126,7 +126,7 @@ local function to_range(node)
     }
 end
 
-local function ts_find_table_value(value)
+local function ts_find_table_string_value(value)
     local success, tree = pcall(vim.treesitter.get_parser, 0)
     if not success then
         return {}
@@ -152,6 +152,37 @@ local function ts_find_table_value(value)
 
     return found
 end
+
+local function ts_find_table_value(group, key)
+    local success, tree = pcall(vim.treesitter.get_parser, 0)
+    if not success then
+        return {}
+    end
+
+    local root = tree:parse()[1]:root()
+
+    local query = vim.treesitter.query.parse('lua', ([[
+        (function_call
+          name: (identifier) @group (#eq? @group "%s")
+          arguments: (arguments
+            (table_constructor
+              (field
+                name: (identifier) @key (#eq? @key "%s")
+                value: (_) @value))))
+    ]]):format(group, key))
+
+    local found = {}
+    for _, captures, _ in query:iter_matches(root, 0) do
+        ---@type TSNode
+        local value_node = captures[3]
+        if value_node ~= nil then
+            table.insert(found, to_range(value_node))
+        end
+    end
+
+    return found
+end
+
 
 local function ts_find_table_key(group_name, value)
     local success, tree = pcall(vim.treesitter.get_parser, 0)
@@ -185,13 +216,15 @@ end
 ---@enum ErrorType
 M.ERROR_TYPES = {
     INVALID_COLOR = 1,
-    INVALID_ATTRIBUTE = 2,
+    INVALID_ATTRIBUTE_KEY = 2,
+    INVALID_ATTRIBUTE_VALUE = 3,
 }
 
 ---@type table<ErrorType, vim.diagnostic.Severity>
 M.ERROR_SEVERITIES = {
     [M.ERROR_TYPES.INVALID_COLOR] = vim.diagnostic.severity.WARN,
-    [M.ERROR_TYPES.INVALID_ATTRIBUTE] = vim.diagnostic.severity.WARN,
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE_KEY] = vim.diagnostic.severity.WARN,
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE] = vim.diagnostic.severity.WARN,
 }
 
 ---@type table<ErrorType, fun(error: ErrorBag): string>
@@ -199,8 +232,11 @@ M.ERROR_MESSAGES = {
     [M.ERROR_TYPES.INVALID_COLOR] = function(error)
         return ('Invalid color: \'%s\''):format(error.message:match('Invalid highlight color: \'(.*)\''))
     end,
-    [M.ERROR_TYPES.INVALID_ATTRIBUTE] = function(error)
-        return ('Invalid attribute name: %s'):format(error.message:match('Invalid attribute: \'(.*)\''))
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE_KEY] = function(error)
+        return ('Invalid attribute name: %s'):format(error.message:match('Invalid attribute key: \'(.*)\''))
+    end,
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE] = function(error)
+        return 'Invalid attribute value'
     end,
 }
 
@@ -209,12 +245,17 @@ M.REFINE_ERROR_LOCATION = {
     [M.ERROR_TYPES.INVALID_COLOR] = function(error)
         local _, _, bad_value = error.message:find('Invalid highlight color: \'(.*)\'')
 
-        return ts_find_table_value(bad_value)
+        return ts_find_table_string_value(bad_value)
     end,
-    [M.ERROR_TYPES.INVALID_ATTRIBUTE] = function(error)
-        local _, _, bad_value = error.message:find('Invalid attribute: \'(.*)\'')
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE_KEY] = function(error)
+        local _, _, bad_value = error.message:find('Invalid attribute key: \'(.*)\'')
 
         return ts_find_table_key(error.group.name, bad_value)
+    end,
+    [M.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE] = function(error)
+        local _, _, key = error.message:find('Invalid attribute value for: \'(.*)\'')
+
+        return ts_find_table_value(error.group.name, key)
     end,
 }
 

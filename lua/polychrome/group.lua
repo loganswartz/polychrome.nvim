@@ -34,7 +34,8 @@ M.GUI_OPTIONS = {
 }
 
 --- The keys that are allowed to be set on a group definition.
-M.ALLOWED_KEYS = vim.tbl_flatten({ M.COLOR_OPTIONS, M.VIRTUAL_OPTIONS, M.GUI_OPTIONS, vim.tbl_keys(M.GUI_FLAGS) })
+M.ALLOWED_KEYS = vim.iter({ M.COLOR_OPTIONS, M.VIRTUAL_OPTIONS, M.GUI_OPTIONS, vim.tbl_keys(M.GUI_FLAGS) }):flatten()
+    :totable()
 
 --- Convert a raw color number (from `nvim_get_hl`) to a hex string.
 ---
@@ -118,10 +119,29 @@ M.Group = { ---@diagnostic disable-line: missing-fields
     end,
 
     set = function(self, key, value)
-        if not (vim.tbl_contains(M.ALLOWED_KEYS, key) or type(key) == "number") then
+        local is_valid_key = vim.tbl_contains(M.ALLOWED_KEYS, key) or type(key) == "number"
+
+        local is_valid_bg_fg_value = vim.tbl_contains(M.COLOR_OPTIONS, key) and
+            (value.is_color_object == true or type(value) == "string")
+        local is_valid_gui_flag = vim.tbl_contains(vim.tbl_keys(M.GUI_FLAGS), key) and type(value) == "boolean"
+        local is_valid_linked_group = type(key) == "number" and value.is_highlight_group == true
+        local is_valid_gui_option = vim.tbl_contains(M.GUI_OPTIONS, key) and
+            (type(value) == "number" or type(value) == "string")
+
+        local is_valid_value = is_valid_bg_fg_value or is_valid_gui_flag or is_valid_linked_group or is_valid_gui_option
+
+        if not is_valid_key then
             diagnostics.add({ {
-                type = diagnostics.ERROR_TYPES.INVALID_ATTRIBUTE,
-                message = "Invalid attribute: '" .. key .. "'",
+                type = diagnostics.ERROR_TYPES.INVALID_ATTRIBUTE_KEY,
+                message = "Invalid attribute key: '" .. key .. "'",
+                group = self,
+            } })
+            goto finish
+        end
+        if not is_valid_value then
+            diagnostics.add({ {
+                type = diagnostics.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE,
+                message = "Invalid attribute value for: '" .. key .. "'",
                 group = self,
             } })
             goto finish
