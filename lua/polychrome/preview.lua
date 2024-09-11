@@ -112,9 +112,9 @@ local function clear_preview()
 end
 
 --- Activate a live preview of the colorscheme.
-function M.StartPreview()
+function M.start()
     -- start with a clean slate
-    M.StopPreview()
+    M.stop()
 
     PREVIOUS_COLORSCHEME = vim.g.colors_name
 
@@ -136,7 +136,7 @@ function M.StartPreview()
 end
 
 --- Deactivate the live preview of the colorscheme.
-function M.StopPreview()
+function M.stop()
     clear_preview()
 
     if PREVIOUS_COLORSCHEME ~= nil then

@@ -81,7 +81,7 @@ function M.escape(s, prefix)
 
     -- generate a table like { char = prefix .. char }
     local mapped = vim.tbl_map(function(c) return { [c] = prefix .. c } end, special)
-    local flattened = vim.tbl_flatten(mapped)
+    local flattened = vim.iter(mapped):flatten():totable()
 
     return s:gsub(".", flattened)
 end
@@ -154,6 +154,11 @@ function M.sign(x)
     else
         return 0
     end
+end
+
+function M.get_plugin_root()
+    local root = debug.getinfo(2, "S").source:sub(2)
+    return root:match("(.*/)")
 end
 
 return M
