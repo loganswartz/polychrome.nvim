@@ -89,7 +89,7 @@ local COMMANDS = Command.new({
         stop = preview.stop,
     }, 'start'),
     template = Command.new({
-        theme = templates.load_theme_template,
+        theme = templates.read_into_current_buffer_factory('theme.lua.template'),
     }),
 })
 
