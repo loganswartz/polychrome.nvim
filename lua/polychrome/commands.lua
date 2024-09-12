@@ -93,7 +93,13 @@ local COMMANDS = Command.new({
     }),
 })
 
+local commands_loaded = false
+
 M.setup = function()
+    if commands_loaded then
+        return
+    end
+
     vim.api.nvim_create_user_command('Polychrome', COMMANDS:make_handler(),
         { nargs = '+', complete = COMMANDS:make_complete_handler() })
 
@@ -108,6 +114,8 @@ M.setup = function()
         vim.deprecate(":StopPreview", ":Polychrome preview stop", "future versions", "polychrome.nvim", false)
         preview.stop()
     end, {})
+
+    commands_loaded = true
 end
 
 return M
