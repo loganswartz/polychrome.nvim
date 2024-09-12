@@ -1,6 +1,6 @@
 local colorscheme = require('polychrome.colorscheme')
 local color = require('polychrome.color')
-local preview = require('polychrome.preview')
+local commands = require('polychrome.commands')
 
 local M = {
     Colorscheme = colorscheme.Colorscheme,
@@ -11,11 +11,8 @@ local M = {
     oklch = color.oklch,
     ciexyz = color.ciexyz,
     lms = color.lms,
-    StartPreview = preview.StartPreview,
-    StopPreview = preview.StopPreview,
 }
 
-vim.api.nvim_create_user_command('StartPreview', function() preview.StartPreview() end, {})
-vim.api.nvim_create_user_command('StopPreview', function() preview.StopPreview() end, {})
+commands.setup()
 
 return M

@@ -54,22 +54,26 @@ you format your project properly.
 
 ## Quick Start
 
-If you just want to start testing things out, create a file named
-`your_theme.lua`, and populate it with the following:
+To start testing things out, open a new (empty) buffer and run `:Polychrome
+template theme`. This will fill the buffer with an empty colorscheme that
+contains all the most common highlight groups, and looks something like this:
 
 ```lua
 local Colorscheme = require('polychrome').Colorscheme
 
 -- replace `your_theme` with the name of your colorscheme
 Colorscheme.define('your_theme', function ()
-    -- Normal { fg = rgb(150, 150, 219), bg = rgb(20, 20, 20) }
+    -- Normal { }
+    -- Comment { }
+
+    -- ...many other highlight groups
 end)
 ```
 
-Then, while editing that file, do `:StartPreview`.
-
-You can then start adding highlights, and you'll instantly see the changes in
-your current window.
+Then, run `:Polychrome preview` (or `:Polychrome preview start`) to enable the
+live preview mode. You can then start setting highlights, and you'll instantly
+see the changes in your current window. You can disable the live preview mode
+with `:Polychrome preview stop`.
 
 > [!IMPORTANT]
 > If you are planning on creating a full colorscheme plugin, you may want to
@@ -326,9 +330,9 @@ end, { inject_gui_groups = false })
 
 ### Live Preview
 
-You can turn on a dynamic preview of your colorscheme via the `:StartPreview`
-command, or `require('polychrome').StartPreview()` from a Lua context. Running
-this command does the following:
+You can turn on a dynamic preview of your colorscheme via the `:Polychrome
+preview start` command, or `require('polychrome.preview').start()` from a Lua
+context. Running this command does the following:
 
   1. Runs the contents of the current buffer, and reapplies any colorscheme
      defined anywhere within it (even via `require`).
@@ -337,12 +341,13 @@ this command does the following:
      occurences of `Comment` in the buffer will be highlighted with the
      "Comment" highlight group)
 
-`StartPreview()` registers these actions via autocmd (specifically
-`TextChanged`, `TextChangedI`, `TextChangedP`, and `TextChangedT`), and
-throttles reloads to every 500ms by default, shared across the autocommands.
+`require('polychrome.preview').start()` registers these actions via autocmd
+(specifically `TextChanged`, `TextChangedI`, `TextChangedP`, and
+`TextChangedT`), and throttles reloads to every 500ms by default, shared across
+the autocommands.
 
-You can deactivate the live editing mode with `:StopPreview`, or
-`require('polychrome').StopPreview()` from a Lua context.
+You can deactivate the live editing mode with `:Polychrome preview stop`, or
+`require('polychrome.preview').stop()` from a Lua context.
 
 ## Finding highlight groups
 

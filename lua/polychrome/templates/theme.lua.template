@@ -1,0 +1,302 @@
+local Colorscheme = require("polychrome").Colorscheme
+
+---@diagnostic disable: undefined-global
+local theme = Colorscheme.define('your_theme', function()
+    ---- De Facto groups ------------------------ {{{
+    -- These groups are not listed as default vim groups
+    -- but they are defacto standard group names for syntax highlighting.
+
+    -- Uncomment and edit if you want more specific syntax highlighting.
+
+    -- Normal {}
+    -- Comment {}
+    -- NormalFloat {}             -- Normal text in floating windows.
+    -- FloatBorder {}             -- Border of floating windows
+    -- Conceal {}                 -- placeholder characters substituted for concealed text (see 'conceallevel')
+    -- Cursor { Reverse }         -- character under the cursor
+    -- lCursor {}                 -- the character under the cursor when |language-mapping| is used (see 'guicursor')
+    -- CursorIM {}                -- like Cursor, but used when in IME mode |CursorIM|
+    -- Directory {}               -- directory names (and other special names in listings)
+    -- netrwClassify {}           -- trailing slash on directory names in netrw
+
+    -- Constant {}                -- (preferred) any constant
+    -- String {}                  -- a string constant: "this is a string"
+    -- Character {}               -- a character constant: 'c', '\n'
+    -- Number { Constant }        -- a number constant: 234, 0xff
+    -- Boolean { Constant }       -- a boolean constant: TRUE, false
+    -- Float { Constant }         -- a floating point constant: 2.3e10
+
+    -- Identifier {}              -- (preferred) any variable name
+    -- Function { Identifier }    -- function name (also: methods for classes)
+
+    -- Statement {}               -- (preferred) any statement
+    -- Conditional { Statement }  -- if, then, else, endif, switch, etc.
+    -- Repeat { Statement }       -- for, do, while, etc.
+    -- Label { Statement }        -- case, default, etc.
+    -- Operator { Statement }     -- "sizeof", "+", "*", etc.
+    -- Keyword { Statement }      -- any other keyword
+    -- Exception { Statement }    -- try, catch, throw
+
+    -- PreProc {}                 -- (preferred) generic Preprocessor
+    -- Include { PreProc }        -- preprocessor #include
+    -- Define { PreProc }         -- preprocessor #define
+    -- Macro { PreProc }          -- same as Define
+    -- PreCondit { PreProc }      -- preprocessor #if, #else, #endif, etc.
+
+    -- Type {}                    -- (preferred) int, long, char, etc.
+    -- StorageClass { Type }      -- static, register, volatile, etc.
+    -- Structure { Type }         -- struct, union, enum, etc.
+    -- Typedef { Type }           -- A typedef
+
+    -- Special {}                 -- (preferred) any special symbol
+    -- SpecialChar { Special }    -- special character in a constant
+    -- Tag { Special }            -- you can use CTRL-] on this
+    -- Delimiter { Special }      -- character that needs attention
+    -- SpecialComment { Special } -- special things inside a comment
+    -- Debug { Special }          -- debugging statements
+
+    -- ("Ignore", below, may be invisible...)
+    -- Ignore {}              -- (preferred) left blank, hidden  |hl-Ignore|
+
+    -- Todo {}                -- (preferred) anything that needs extra attention; mostly the keywords TODO FIXME and XXX
+    -- Error {}               -- (preferred) any erroneous construct
+
+    -- Git
+    -- diffFile {}
+    -- diffIndexLine { Identifier, Italic }
+    -- diffAdded {}     -- diff mode: Added line |diff.txt|
+    -- DiffAdd { diffAdded }
+    -- diffChanged {}   -- diff mode: Changed line |diff.txt|
+    -- DiffChange { diffChanged }
+    -- diffRemoved {}   -- diff mode: Deleted line |diff.txt|
+    -- DiffDelete { diffRemoved }
+    -- DiffText {}      -- diff mode: Changed text within a changed line |diff.txt|
+    -- diffLine { Constant }
+    -- diffSubname {}
+    -- diffOldFile {}
+    -- diffNewFile {}
+
+    -- TermCursor {}               -- cursor in a focused terminal
+    -- TermCursorNC {}             -- cursor in an unfocused terminal
+    -- ErrorMsg { Error }          -- error messages on the command line
+    -- VertSplit {}                -- the column separating vertically split windows
+
+    -- Folded {}                   -- line used for closed folds
+    -- ColorColumn { NormalFloat } -- used for the columns set with 'colorcolumn'
+    -- FoldColumn {}               -- 'foldcolumn'
+    -- SignColumn {}               -- column where |signs| are displayed
+    -- CursorColumn {}             -- used for the columns set with 'cursorcolumn'
+    -- CursorLine {}               -- used for the row set with 'cursorline'
+    -- CursorLineNr {}             -- used for the row set with 'cursorline'
+    -- LineNr { Comment }
+
+    -- MatchParen {}           -- The character under the cursor or just before it, if it is a paired bracket, and its match. |pi_paren.txt|
+    -- ModeMsg {}              -- 'showmode' message (e.g., "-- INSERT -- "
+    -- MsgArea {}              -- Area for messages and cmdline
+    -- MsgSeparator {}         -- Separator for scrolled messages, `msgsep` flag of 'display'
+    -- MoreMsg {}              -- |more-prompt|
+    -- NonText { Comment }     -- '@' at the end of the window, characters from 'showbreak' and other characters that do not really exist in the text (e.g., ">" displayed when a double-wide character doesn't fit at the end of the line). See also |hl-EndOfBuffer|.
+    -- EndOfBuffer {}          -- filler lines (~) after the end of the buffer.  By default, this is highlighted like |hl-NonText|.
+    -- NormalNC {}             -- normal text in non-current windows
+    -- Pmenu {}                -- Popup menu: normal item.
+    -- PmenuSel {}             -- Popup menu: selected item.
+    -- PmenuSbar {}            -- Popup menu: scrollbar.
+    -- PmenuThumb {}           -- Popup menu: Thumb of the scrollbar.
+    -- Question {}             -- |hit-enter| prompt and yes/no questions
+    -- SpecialKey {}           -- Unprintable characters: text displayed differently from what it really is.  But not 'listchars' whitespace. |hl-Whitespace|
+    -- SpellBad {}             -- Word that is not recognized by the spellchecker. |spell| Combined with the highlighting used otherwise.
+    -- SpellCap {}             -- Word that should start with a capital. |spell| Combined with the highlighting used otherwise.
+    -- SpellLocal {}           -- Word that is recognized by the spellchecker as one that is used in another region. |spell| Combined with the highlighting used otherwise.
+    -- SpellRare {}            -- Word that is recognized by the spellchecker as one that is hardly ever used.  |spell| Combined with the highlighting used otherwise.
+    -- StatusLine {}           -- status line of current window
+    -- StatusLineNC {}         -- status lines of not-current windows Note: if this is equal to "StatusLine" Vim will use "^^^" in the status line of the current window.
+    -- TabLine {}              -- tab pages line, not active tab page label
+    -- TabLineFill {}          -- tab pages line, where there are no labels
+    -- TabLineSel {}           -- tab pages line, active tab page label
+    -- WinBar {}               -- window bar of the current window
+    -- WinBarNC {}             -- window bars of not-current windows
+    -- Title {}                -- titles for output from ":set all", ":autocmd" etc.
+    -- Visual {}               -- Visual mode selection
+    -- VisualNOS {}            -- Visual mode selection when vim is "Not Owning the Selection".
+    -- WarningMsg {}           -- warning messages
+    -- Whitespace { Comment }  -- "nbsp", "space", "tab" and "trail" in 'listchars'
+    -- WildMenu { Visual }     -- current match in 'wildmenu' completion
+    -- Search {}
+    -- QuickFixLine {}         -- Current |quickfix| item in the quickfix window. Combined with |hl-CursorLine| when the cursor is there.
+    -- Substitute {}           -- |:substitute| replacement text highlighting
+
+    -- }}}
+    ---- LSP groups ----------------------------- {{{
+    -- These groups are for the native LSP client. Some other LSP clients may use
+    -- these groups, or use their own. Consult your LSP client's documentation.
+
+    -- DiagnosticError { Error }                                       -- used for "Error" diagnostic virtual text
+    -- LspDiagnosticsDefaultError { DiagnosticError }                  -- used for "Error" diagnostic virtual text
+    -- LspDiagnosticsError { LspDiagnosticsDefaultError }              -- used for "Error" diagnostic virtual text
+    -- LspDiagnosticsErrorSign { LspDiagnosticsError }                 -- used for "Error" diagnostic signs in sign column
+    -- LspDiagnosticsErrorFloating { LspDiagnosticsError }             -- used for "Error" diagnostic messages in the diagnostics float
+    -- DiagnosticWarn {}                                               -- used for "Warning" diagnostic virtual text
+    -- LspDiagnosticsDefaultWarning { DiagnosticWarn }
+    -- LspDiagnosticsWarning { LspDiagnosticsDefaultWarning }          -- used for "Warning" diagnostic virtual text
+    -- LspDiagnosticsWarningSign { LspDiagnosticsWarning }             -- used for "Warning" diagnostic signs in sign column
+    -- LspDiagnosticsWarningFloating { LspDiagnosticsWarning }         -- used for "Warning" diagnostic messages in the diagnostics float
+    -- DiagnosticInfo {}                                               -- used for "Information" diagnostic virtual text
+    -- LspDiagnosticsDefaultInformation { DiagnosticInfo }
+    -- LspDiagnosticsInformation { LspDiagnosticsDefaultInformation }  -- used for "Information" diagnostic virtual text
+    -- LspDiagnosticsInformationSign { LspDiagnosticsInformation }     -- used for "Information" signs in sign column
+    -- LspDiagnosticsInformationFloating { LspDiagnosticsInformation } -- used for "Information" diagnostic messages in the diagnostics float
+    -- DiagnosticHint {}                                               -- used for "Hint" diagnostic virtual text
+    -- LspDiagnosticsDefaultHint { DiagnosticHint }
+    -- LspDiagnosticsHint { LspDiagnosticsDefaultHint }                -- used for "Hint" diagnostic virtual text
+    -- LspDiagnosticsHintSign { LspDiagnosticsHint }                   -- used for "Hint" diagnostic signs in sign column
+    -- LspDiagnosticsHintFloating { LspDiagnosticsHint }               -- used for "Hint" diagnostic messages in the diagnostics float
+    -- LspReferenceText {}                                             -- used for highlighting "text" references
+    -- LspReferenceRead {}                                             -- used for highlighting "read" references
+    -- LspReferenceWrite {}                                            -- used for highlighting "write" references
+    -- DiagnosticUnderlineError { DiagnosticError, Underline }
+    -- DiagnosticUnderlineWarn { DiagnosticWarn, Underline }
+    -- DiagnosticUnderlineInfo { DiagnosticInfo, Underline }
+    -- DiagnosticUnderlineHint { DiagnosticHint, Underline }
+    -- LspDiagnosticsVirtualTextError { LspDiagnosticsError }
+    -- LspDiagnosticsVirtualTextWarning { LspDiagnosticsWarning }
+    -- LspDiagnosticsVirtualTextInformation { LspDiagnosticsInformation }
+    -- LspDiagnosticsVirtualTextHint { LspDiagnosticsHint }
+
+    -- LspSignatureActiveParameter { WildMenu }
+    -- }}}
+    ---- Treesitter groups ---------------------- {{{
+    -- These groups are for the neovim tree-sitter highlights.
+    -- As of writing, tree-sitter support is a WIP, group names may change.
+    -- By default, most of these groups link to an appropriate Vim group.
+    --
+    -- https://github.com/nvim-treesitter/nvim-treesitter/blob/master/CONTRIBUTING.md#highlights
+
+    --- Misc {{{
+    -- _ "@comment" {}                   -- line and block comments
+    -- _ "@error" { Error }              -- syntax/parser errors
+    -- _ "@none" {}                      -- completely disable the highlight
+    -- _ "@keyword.directive" {}         -- various preprocessor directives & shebangs
+    -- _ "@keyword.directive.define" {}  -- preprocessor definition directives
+    -- _ "@operator" {}                  -- symbolic operators (e.g. `+` / `*`)
+
+    -- }}}
+    --- Punctuation {{{
+    -- _ "@punctuation.delimiter" {}  -- For delimiters ie: `.`
+    -- _ "@punctuation.bracket" {}    -- For brackets and parens.
+    -- _ "@punctuation.special" {}    -- For special punctuation that does not fall in the categories before.
+
+    -- }}}
+    --- Literals {{{
+    -- _ "@string" {}                 -- string literals
+    -- _ "@string.regexp" {}          -- regular expressions
+    -- _ "@string.escape" {}          -- escape sequences
+    -- _ "@string.special" {}         -- other special strings (e.g. dates)
+
+    -- _ "@character" {}              -- character literals
+    -- _ "@character.special" {}      -- special characters (e.g. wildcards)
+
+    -- _ "@boolean" {}                -- boolean literals
+    -- _ "@number" {}                 -- numeric literals
+    -- _ "@number.float" {}           -- floating-point number literals
+
+    -- }}}
+    --- Functions {{{
+    -- _ "@function" {}               -- function definitions
+    -- _ "@function.builtin" {}       -- built-in functions
+    -- _ "@function.call" {}          -- function calls
+    -- _ "@function.macro" {}         -- preprocessor macros
+
+    -- _ "@function.method" {}        -- method definitions
+    -- _ "@function.method.call" {}   -- method calls
+
+    -- _ "@constructor" { Type }      -- constructor calls and definitions
+    -- _ "@variable.parameter" {}     -- parameters of a function
+
+    -- }}}
+    --- Keywords {{{
+    -- _ "@keyword" {}                -- various keywords
+    -- _ "@keyword.function" {}       -- keywords that define a function (e.g. `func` in Go, `def` in Python)
+    -- _ "@keyword.operator" {}       -- operators that are English words (e.g. `and` / `or`)
+    -- _ "@keyword.return" {}         -- keywords like `return` and `yield`
+
+    -- _ "@keyword.conditional" {}    -- keywords related to conditionals (e.g. `if` / `else`)
+    -- _ "@keyword.repeat" {}         -- keywords related to loops (e.g. `for` / `while`)
+    -- _ "@keyword.debug" {}          -- keywords related to debugging
+    -- _ "@label" {}                  -- GOTO and other labels (e.g. `label:` in C)
+    -- _ "@keyword.include" {}        -- keywords for including modules (e.g. `import` / `from` in Python)
+    -- _ "@keyword.exception" {}      -- keywords related to exceptions (e.g. `throw` / `catch`)
+
+    -- }}}
+    --- Types {{{
+    -- _ "@type" {}                           -- type or class definitions and annotations
+    -- _ "@type.builtin" {}                   -- built-in types
+    -- _ "@type.definition" {}                -- type definitions (e.g. `typedef` in C)
+    -- _ "@type.qualifier" {}                 -- type qualifiers (e.g. `const`)
+
+    -- _ "@keyword.storage" {}                -- visibility/life-time/etc. modifiers (e.g. `static`)
+    -- _ "@attribute" {}                      -- attribute annotations (e.g. Python decorators)
+    -- _ "@variable.member" {}                -- object and struct fields
+    -- _ "@property" { _ "@variable.member" } -- similar to `@field`
+
+    -- }}}
+    --- Identifiers {{{
+    -- _ "@variable" {}               -- various variable names
+    -- _ "@variable.builtin" {}       -- built-in variable names (e.g. `this`)
+
+    -- _ "@constant" {}               -- constant identifiers
+    -- _ "@constant.builtin" {}       -- built-in constant values
+    -- _ "@constant.macro" {}         -- constants defined by the preprocessor")
+
+    -- _ "@module" {}                 -- modules or namespaces
+
+    -- }}}
+    --- Text {{{
+    -- _ "@markup" {}                                        -- non-structured text
+    -- _ "@markup.strong" { Bold }                           -- bold text
+    -- _ "@markup.italic" { Italic }                         -- text with emphasis
+    -- _ "@markup.underline" { Underline }                   -- underlined text
+    -- _ "@markup.strikethrough" { Strikethrough }           -- strikethrough text
+    -- _ "@markup.heading" { Title }                         -- text that is part of a title
+    -- _ "@markup.raw" {}                                    -- literal or verbatim text
+    -- _ "@markup.quote" {}                                  -- block quotes
+    -- _ "@markup.math" {}                                   -- math environments (e.g. `$ ... $` in LaTeX)
+    -- _ "@markup.environment" {}                            -- text environments of markup languages
+    -- _ "@markup.environment.name" {}                       -- text indicating the type of an environment
+    -- _ "@markup.link" {}                                   -- text references, footnotes, citations, etc.
+    -- _ "@markup.link.label" { Bold }                       -- link, reference descriptions
+    -- _ "@markup.link.url" { Underline }                    -- URL-style links
+    -- _ "@markup.list" { Statement }                        -- list markers
+    -- _ "@markup.list.unnumbered" {}                        -- unnumbered lists
+    -- _ "@markup.list.numbered" {}                          -- numbered lists
+    -- _ "@markup.list.checked" {}                           -- checked todo-style list markers
+    -- _ "@markup.list.unchecked" {}                         -- unchecked todo-style list markers
+
+    -- _ "@string.special.symbol" {}                         -- symbols or atoms
+    -- _ "@string.special.url" {}                            -- URIs (e.g. hyperlinks)
+    -- _ "@string.documentation" { Comment }                 -- documentation strings
+
+    -- _ "@comment.todo" { Todo, fg = DiagnosticHint.fg }    -- todo notes
+    -- _ "@comment.note" { Todo, fg = DiagnosticInfo.fg }    -- info notes
+    -- _ "@comment.warning" { Todo, fg = DiagnosticWarn.fg } -- warning notes
+    -- _ "@comment.error" { Todo, fg = DiagnosticError.fg }  -- danger/error notes
+
+    -- _ "@diff.plus" { DiffAdd }                            -- Added line
+    -- _ "@diff.plus.gutter" { _ "@diff.plus" }              -- Added gutter indicator
+    -- _ "@diff.minus" { DiffDelete }                        -- Deleted line
+    -- _ "@diff.minus.gutter" { _ "@diff.minus" }            -- Deleted gutter indicator
+    -- _ "@diff.delta" { DiffChange }                        -- Changed line
+    -- _ "@diff.delta.moved" {}                              -- Moved line
+    -- _ "@diff.delta.conflict" {}                           -- line with conflicts
+    -- _ "@diff.delta.gutter" { _ "@diff.delta" }            -- Changed gutter indicator
+
+    -- }}}
+    --- Tags {{{
+    -- _ "@tag" {}                       -- XML tag names
+    -- _ "@tag.attribute" { Identifier } -- XML tag attributes
+    -- _ "@tag.delimiter" {}             -- XML tag delimiters
+
+    -- }}}
+    -- }}}
+end)
+
+return theme
