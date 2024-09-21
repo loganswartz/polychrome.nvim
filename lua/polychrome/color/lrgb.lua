@@ -25,7 +25,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     to_parent = function(self)
         local lms = matrices.lRGB_to_LMS:mul(self:to_matrix())
 
-        return self:get_parent_gamut():new(lms)
+        return self:get_parent_gamut():new(lms:transpose()[1])
     end,
 
     ---@param self lRGB
