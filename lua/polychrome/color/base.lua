@@ -229,7 +229,7 @@ local M = { ---@diagnostic disable-line: missing-fields
         local finish = b:to('oklab')
 
         local values = {}
-        for _, key in ipairs(start.get_components()) do
+        for _, key in ipairs(start.components) do
             values[key] = start[key] + ((finish[key] - start[key]) * percentage)
         end
         local new = require('polychrome').oklab(values)

@@ -1,0 +1,348 @@
+*polychrome.txt*                        A colorscheme creation micro-framework
+
+                                       Type |gO| to see the table of contents.
+
+==============================================================================
+1. Introduction                                      *polychrome-introduction*
+
+`polychrome.nvim` is a colorscheme creation micro-framework for Neovim. The
+main features of `polychrome` are:
+
+ * simple and terse syntax
+ * minimal boilerplate
+ * colors can be specified in many different colorspaces (`hsl`, `Oklab`, etc)
+ * automatic and accurate color clipping down to sRGB when needed
+
+==============================================================================
+2. Quickstart                                          *polychrome-quickstart*
+
+To start testing things out, open a new (empty) buffer and run `:Polychrome
+template theme`. This will fill the buffer with an empty colorscheme that
+contains all the most common highlight groups, and looks something like this:
+
+>lua
+    local Colorscheme = require('polychrome').Colorscheme
+
+    -- replace `your_theme` with the name of your colorscheme
+    Colorscheme.define('your_theme', function ()
+	-- Normal { }
+	-- Comment { }
+
+	-- ...many other highlight groups
+    end)
+<
+
+Then, run `:Polychrome preview` (or `:Polychrome preview start`) to enable the
+live preview mode. You can then start setting highlights, and you'll instantly
+see the changes in your current window. You can disable the live preview mode
+with `:Polychrome preview stop`.
+
+If you want to dive into a complete example already using polychrome.nvim, check
+out `sunburn.nvim` (https://github.com/loganswartz/sunburn.nvim).
+
+==============================================================================
+3. Usage                                                    *polychrome-usage*
+
+Using `polychrome` to create a colorscheme involves 2 high-level steps:
+
+    1. Create a colorscheme definition, containing all your highlights
+    3. Call the `:apply()` method on your colorscheme definition when the user
+       runs `:colorscheme your_colorscheme
+
+Creating a colorscheme definition ~
+
+Here's the simplest way to create a definition:
+
+>lua
+    local Colorscheme = require('polychrome').Colorscheme
+
+    local my_colorscheme = Colorscheme.define('my_colorscheme', function ()
+	-- ...
+    end)
+<
+
+The second argument to `Colorscheme.define` is a function, and inside that
+function is where all your highlights will be defined. Generally, a single
+highlight in a colorscheme definition looks like this:
+
+>lua
+    <highlight name> { <attribute> = <value> }
+<
+
+Here's a more concrete example:
+
+>lua
+    Comment { fg = '#ff0000' }
+<
+
+That definition is effectively the same as `:hi Comment fg='#ff0000'`; in
+other words, it would highlight all comment text as pure red. This is probably
+the simplest example possible, but `polychrome` has a lot of additional forms
+that you can use to apply more complex highlights.
+
+Here are some examples of the different syntaxes and helpers that are
+available:
+
+>lua
+    -- most groups can be specified like this
+    Constant { fg = rgb(0, 255, 0), bg = '#ff0000' }
+
+    -- specify a GUI feature
+    Underline { gui = 'underline' }
+    -- we actually inject all the common GUI helpers for convenience
+    -- (this is documented later on in the README)
+
+    -- link a group to another one (equivalent to `:hi link Boolean Constant`)
+    Boolean { Constant }
+
+    -- groups that use `@` or other special characters (ex. treesitter groups)
+    -- need a slightly different syntax: _'<name>' instead of <name>
+    _'@punctuation.delimiter' { fg = rgb(0, 255, 0), bg = oklch(0, 0, 0) }
+
+    -- linking groups with special characters works similarly to normal
+    _'@punctuation.delimiter' { Constant }
+<
+
+That example shows off the `rgb` and `oklch` helper commands, but quite a few
+more colorspaces are supported. Refer to |polychrome.nvim-colorspaces| for a
+full list.
+
+The helpers are automatically injected into the colorscheme definition context,
+so you don't need to `require` them if you don't want to (although you can
+anyway for clarity, or improved editor hints). If you prefer to import the
+helpers explicitly, they are all available to import like so:
+
+>lua
+    local rgb = require('polychrome').rgb
+<
+
+Applying your colorscheme ~
+
+When you run `:colorscheme somecolorscheme` in (Neo)vim, it looks for a file
+named `somecolorscheme.vim` (or `somecolorscheme.lua`) in one of the `colors/`
+directories in the runtime path (AKA, `vim.api.nvim_list_runtime_paths()`). If
+a file is found, it just runs that file, and that should result in the
+colorscheme being applied. Traditionally, this meant that most colorschemes
+were just a single file in `colors/` with a long list of `:hi ...` commands in
+it.
+
+When you define a colorscheme with `polychrome`, it doesn't actually *apply*
+the highlights immediately. Instead, you've simply created a colorscheme
+definition that can be moved around or returned like any other Lua object:
+
+>lua
+    local Colorscheme = require('polychrome').Colorscheme
+
+    local my_colorscheme = Colorscheme.define(...)
+<
+
+To actually apply all your defined highlights, you need to call
+`my_colorscheme:apply()` when the user runs `:colorscheme my_colorscheme`.
+This can be accomplished by creating a file in `colors/` named
+`my_colorscheme.lua`, that imports your colorscheme definition and calls
+`:apply()` on it.
+
+This should be all that's needed to make your colorscheme loadable.
+
+==============================================================================
+4. Supported Colorspaces                              *polychrome-colorspaces*
+
+Currently, `polychrome.nvim` supports the following colorspaces:
+
+    * `sRGB` (hex string or integer values)
+    * `Linear RGB` (non-gamma-corrected)
+    * `HSL`
+    * `Oklab`
+    * `Oklch`
+    * `CIEXYZ`
+    * `LMS`
+
+Many of these color spaces can encode values outside of the sRGB color space,
+but Neovim (and terminals in general) currently only support sRGB. For our
+purposes, Neovim only accepts sRGB hex strings, so we must have a way to
+convert any colors to an sRGB hex string.
+
+It should be noted that if you specify a color that falls outside the sRGB
+colorspace, `polychrome.nvim` won't magically allow you to display that color
+completely accurately. The end result will be the closest displayable color in
+the sRGB colorspace. See |polychrome.nvim-color-clipping| for more info.
+
+For each supported colorspace, `polychrome.nvim` provides a helper that will
+handle automatically converting a given color to sRGB. Below are some examples
+of how to specify `#ff0000` in each colorspace, using the provided helpers:
+
+sRGB ~
+
+sRGB, also known as gamma-corrected RGB, has red, green, and blue components
+that range from 0 to 255. The values have gamma-correction baked in, which
+solves some problems, and creates some others. This is the colorspace most
+people are thinking of when they think "RGB".
+
+>lua
+    -- Neovim natively supports hex strings, so no helper is needed
+    local red = '#ff0000'
+
+    -- there *is* also a helper available, if you want to use integers:
+    local rgb = require('polychrome').rgb
+
+    -- alternative forms include:
+    local red = rgb(255, 0, 0)
+    local red = rgb({ r = 255, g = 0, b = 0 })
+<
+
+lRGB ~
+
+Linear RGB, also known as non-gamma-corrected RGB, is similar to sRGB.
+sRGB has red, green, and blue components that are in the range 0-255, but
+linear RGB values are decimals in the range 0.0 - 1.0, and additionally has no
+gamma correction. The lack of gamma correction makes conversion to other
+colorspaces much simpler.
+
+>lua
+    local lrgb = require('polychrome').lrgb
+
+    local red = lrgb(1, 0, 0)
+    -- or
+    local red = lrgb({ lr = 1, lg = 0, lb = 0 })
+<
+
+HSL ~
+
+Many people are also familiar with HSL, especially if they work in web
+development or use CSS. HSL provides a slightly more intuitive way to specify
+colors, but modern colorspaces like `Oklch` do the same with much higher
+perceptual accuracy.
+
+>lua
+    local hsl = require('polychrome').hsl
+
+    local red = hsl(0, 100, 50)
+    -- or
+    local red = hsl({ h = 0, s = 100, l = 50 })
+<
+
+Oklab ~
+
+Oklab is a relatively new colorspace that was created to provide high
+perceptual accuracy. It's essentially a tweaked version of the existing
+"CIELAB" colorspace.
+
+>lua
+    local oklab = require('polychrome').oklab
+
+    local red = oklab(0.62795, 0.22486, 0.12584)
+    -- or
+    local red = oklab({ L = 0.62795, a = 0.22486, b = 0.12584 })
+<
+
+Oklch ~
+
+In the same way that HSL provides a human-intuitive way of specifying RGB
+colors, Oklch accomplishes the same with Oklab. If you go about blindly
+tweaking values of a color specified in Oklch, the resulting color will
+usually be closer to what you expected than what it would be if you did the
+same in raw sRGB or HSL.
+
+>lua
+    local oklch = require('polychrome').oklch
+
+    local red = oklch(0.62795, 0.25768, 29.23387)
+    -- or
+    local red = oklch({ L = 0.62795, c = 0.25768, h = 29.23387 })
+<
+
+CIE XYZ ~
+
+The CIE XYZ colorspace is meant to encompass "all color sensations that are
+visible to a person with average eyesight". The actual values are not
+intuitive to the average person, but support for this means that any
+human-visible color can be represented. You probably don't want to specify
+colors in this colorspace directly.
+
+>lua
+    local ciexyz = require('polychrome').ciexyz
+
+    local red = ciexyz(0.25456, 0.34053, 0.10514)
+    -- or
+    local red = ciexyz({ X = 0.25456, Y = 0.34053, Z = 0.10514 })
+<
+
+LMS ~
+
+The LMS colorspace is meant to model the actual response of the cones in the
+retina. The pros and cons of LMS are very similar to CIE XYZ. You probably
+don't want to specify colors in this colorspace directly.
+
+>lua
+    local lms = require('polychrome').lms
+
+    local red = lms(0.41222, 0.21190, 0.08830)
+    -- or
+    local red = lms({ L = 0.41222, M = 0.21190, S = 0.08830 })
+<
+
+Currently Unsupported ~
+
+There are countless numbers of other colorspaces that aren't currently
+supported, and many of them never will be. However, there are a few
+colorspaces that will hopefully be supported in the future:
+
+    * `P3`
+    * `CIELAB`
+    * `CIELch`
+    * `Okhsl`
+    * `Okhsv`
+    * `HSV`
+
+==============================================================================
+5. Live preview mode                                 *polychrome-live-preview*
+
+`polychrome` includes a live preview mode that vastly streamlines the process
+of creating a colorscheme. When enabled, several things happen:
+
+    * The contents of the current buffer are loaded as a lua module, and run
+    * Any colorscheme definitions in it are automatically captured
+    * The captured definition is automatically applied
+    * Every highlight group name found in the buffer is highlighted with that
+      group (ex: every occurence of the string "Comment" in the buffer is
+      highlighted with the `Comment` highlight group)
+
+Additionally, diagnostics are created for any common issues or errors found in
+the colorscheme definition. This creates a very tight feedback loop as you
+add and tweak your highlights, as you can immediately see the effects of each
+change as you make them.
+
+==============================================================================
+6. Commands                                              *polychrome-commands*
+
+A few user commands are automatically registered in order to make colorscheme
+creation easier. 
+
+:Polychrome preview [start] ~
+
+Start the live preview mode, via the current buffer. See
+|polychrome-live-preview| for more info.
+
+The `start` argument is optional, so calling `:Polychrome preview` without an
+argument is the same as passing `start`.
+
+:Polychrome preview stop ~
+
+Stop the live preview mode.
+
+:Polychrome template {name} ~
+
+Load a template into the current buffer.
+
+The `name` argument decides what template to load, and the loaded template
+will be inserted at the beginning of the current buffer. Opening a blank
+buffer and running this command makes it easy to get started quickly without
+needing to add the boilerplate yourself.
+
+Here are all of the currently available templates:
+
+    * `theme` - An empty theme definition, with all the most common highlights
+	      included as comments.
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

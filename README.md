@@ -4,15 +4,13 @@ A colorscheme creation micro-framework.
 
 ## About
 
-The main goal of `polychrome` is simplicity, both in UX and DX. By simplicity, I
-mean:
+`polychrome.nvim` is a colorscheme creation micro-framework for Neovim. The
+main features of `polychrome` are:
 
  * simple and terse syntax
- * takes care of the typical colorscheme boilerplate
- * allows specifying colors in gamuts other than sRGB
- * automatically and intelligently clips colors in wide gamuts down to sRGB
- * inner workings are dead-simple to understand and modify
- * has minimal magic
+ * minimal boilerplate
+ * colors can be specified in many different colorspaces (`hsl`, `Oklab`, etc)
+ * automatic and accurate color clipping down to sRGB when needed
 
 Here's a fully functional example of a (very basic) colorscheme defined with
 `polychrome`:
@@ -82,7 +80,7 @@ with `:Polychrome preview stop`.
 
 ## Usage
 
-Here are some examples of the different syntaxes and helpers that available:
+Here are some examples of the different syntaxes and helpers that are available:
 
 ```lua
     -- most groups can be specified like this
