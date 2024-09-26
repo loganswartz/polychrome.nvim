@@ -144,8 +144,8 @@ function M.partial(func, ...)
     end
 end
 
----@param x float
----@return float
+---@param x number
+---@return number
 function M.sign(x)
     if x > 0 then
         return 1
@@ -159,6 +159,10 @@ end
 function M.get_plugin_root()
     local root = debug.getinfo(2, "S").source:sub(2)
     return root:match("(.*/)")
+end
+
+function M.isNaN(x)
+    return x ~= x
 end
 
 return M

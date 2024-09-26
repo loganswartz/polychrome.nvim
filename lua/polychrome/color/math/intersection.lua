@@ -70,6 +70,10 @@ function M.compute_max_saturation(a, b)
 
     S           = S - f * f1 / (f1 * f1 - 0.5 * f * f2)
 
+    if utils.isNaN(S) then
+        return 0
+    end
+
     return S
 end
 
