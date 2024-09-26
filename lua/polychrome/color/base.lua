@@ -1,5 +1,12 @@
 local utils = require('polychrome.utils')
 
+--- Global cache for hex values of colors.
+---
+--- This is used to avoid recalculating the hex value of a color every time it
+--- is used. The key is a combination of the color type and its component
+--- values.
+local COLOR_CACHE = {}
+
 ---@see Reference https://drafts.csswg.org/css-color/#color-conversion-code
 
 ---@class Color A generic color that can be converted to a hex value.
@@ -217,21 +224,36 @@ local M = { ---@diagnostic disable-line: missing-fields
         return true
     end,
 
+    interpolate_linear = function(a, b, percentage)
+        local start = a:to('oklab')
+        local finish = b:to('oklab')
+
+        local values = {}
+        for _, key in ipairs(start.get_components()) do
+            values[key] = start[key] + ((finish[key] - start[key]) * percentage)
+        end
+        local new = require('polychrome').oklab(values)
+
+        return new:to(getmetatable(a))
+    end,
+
     __tostring = function(self)
         return self:hex()
     end,
 
     -- perf: cache the hex conversion to avoid recalculating every time the color is used
     hex = function(self)
-        -- if we have a cached hex value and the color components haven't changed
-        if self._hex ~= nil and self._previous_values == self then
-            return self._hex
+        local parts = { self.__type }
+        for _, component in ipairs(self.components) do
+            table.insert(parts, self[component])
+        end
+        local key = table.concat(parts, ':')
+
+        if COLOR_CACHE[key] == nil then
+            COLOR_CACHE[key] = self:to('rgb'):hex()
         end
 
-        self._hex = self:to('rgb'):hex()
-        self._previous_values = self
-
-        return self._hex
+        return COLOR_CACHE[key]
     end,
 }
 M.__index = M
