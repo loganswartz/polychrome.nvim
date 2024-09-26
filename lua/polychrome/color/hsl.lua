@@ -30,7 +30,7 @@ local M = { ---@diagnostic disable-line: missing-fields
         return p
     end,
 
-    get_parent_gamut = function(self)
+    get_parent_gamut = function()
         return require('polychrome.color.rgb')
     end,
 

@@ -9,15 +9,15 @@ local matrices = require('polychrome.color.math.matrices')
 ---@field new fun(self: lRGB, ...: table|number): lRGB Create a new instance of the class.
 ---@overload fun(self: lRGB, ...: table|number): lRGB Create a new instance of the class.
 ---@field _from_lms_naive fun(self: lRGB, parent: LMS): lRGB Naively convert from Oklab to lRGB
----@field to_parent fun(self: lRGB): Oklab
----@field get_parent_gamut fun(self: lRGB): LMS
+---@field to_parent fun(self: lRGB): LMS
+---@field get_parent_gamut fun(): LMS
 
 ---@type lRGB
 local M = { ---@diagnostic disable-line: missing-fields
     __type = 'lrgb',
     components = { 'lr', 'lg', 'lb' },
 
-    get_parent_gamut = function(self)
+    get_parent_gamut = function()
         return require('polychrome.color.lms')
     end,
 
@@ -25,7 +25,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     to_parent = function(self)
         local lms = matrices.lRGB_to_LMS:mul(self:to_matrix())
 
-        return self:get_parent_gamut():new(lms:transpose()[1])
+        return self.get_parent_gamut():new(lms:transpose()[1])
     end,
 
     ---@param self lRGB

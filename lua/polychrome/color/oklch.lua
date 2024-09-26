@@ -14,7 +14,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     __type = 'oklch',
     components = { 'L', 'c', 'h' },
 
-    get_parent_gamut = function(self)
+    get_parent_gamut = function()
         return require('polychrome.color.oklab')
     end,
 

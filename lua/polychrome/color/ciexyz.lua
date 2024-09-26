@@ -14,7 +14,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     __type = 'ciexyz',
     components = { 'X', 'Y', 'Z' },
 
-    get_parent_gamut = function(self)
+    get_parent_gamut = function()
         return require('polychrome.color.lms')
     end,
 

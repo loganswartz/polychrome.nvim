@@ -33,7 +33,9 @@ local M = { ---@diagnostic disable-line: missing-fields
 
         if #args == 1 and #args[1] == 0 then
             -- `rgb({ r = 50, g = 100, b = 200 })` syntax
-            obj = args[1]
+            for _, key in ipairs(self.components) do
+                obj[key] = args[1][key]
+            end
         else
             if #args == 1 and #args[1] > 0 then
                 -- `rgb({ 50, 100, 200 })` syntax
