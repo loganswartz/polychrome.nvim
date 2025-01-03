@@ -204,7 +204,7 @@ local function ts_find_table_key(group_name, value)
     local found = {}
     for _, captures, _ in query:iter_matches(root, 0) do
         ---@type TSNode
-        local value_node = captures[2]
+        local value_node = captures[2][1]
         if value_node ~= nil then
             table.insert(found, to_range(value_node))
         end

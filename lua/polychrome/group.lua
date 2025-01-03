@@ -29,7 +29,7 @@ end
 M.COLOR_OPTIONS = {
     fg = is_valid_color_value,
     bg = is_valid_color_value,
-    sg = is_valid_color_value,
+    sp = is_valid_color_value,
 }
 
 --- Options that can be set but will be translated to a different key / removed from the final object.
