@@ -5,8 +5,12 @@ local function is_valid_color_value(value)
     return type(value) == "string" or value.is_color_object == true
 end
 
-local function is_valid_gui_flag(value)
+local function is_boolean(value)
     return type(value) == "boolean"
+end
+
+local function is_number(value)
+    return type(value) == "number"
 end
 
 local function is_valid_gui_value(value)
@@ -53,17 +57,22 @@ M.GUI_HIGHLIGHTS = {
 }
 
 M.GUI_FLAGS = {
-    bold = is_valid_gui_flag,
-    standout = is_valid_gui_flag,
-    underline = is_valid_gui_flag,
-    undercurl = is_valid_gui_flag,
-    underdouble = is_valid_gui_flag,
-    underdotted = is_valid_gui_flag,
-    underdashed = is_valid_gui_flag,
-    strikethrough = is_valid_gui_flag,
-    italic = is_valid_gui_flag,
-    reverse = is_valid_gui_flag,
-    nocombine = is_valid_gui_flag,
+    bold = is_boolean,
+    standout = is_boolean,
+    underline = is_boolean,
+    undercurl = is_boolean,
+    underdouble = is_boolean,
+    underdotted = is_boolean,
+    underdashed = is_boolean,
+    strikethrough = is_boolean,
+    italic = is_boolean,
+    reverse = is_boolean,
+    nocombine = is_boolean,
+}
+
+M.PROCESSING_FLAGS = {
+    default = is_boolean,
+    force = is_boolean,
 }
 
 --- The remaining (non-boolean) GUI options that can be set on a highlight group.
@@ -72,15 +81,21 @@ M.GUI_OPTIONS = {
     font = is_valid_font,
 }
 
---- The keys that are allowed to be set on a group definition.
-M.ALLOWED_OPTIONS = vim.iter({ M.COLOR_OPTIONS, M.VIRTUAL_OPTIONS, M.GUI_OPTIONS, M.GUI_FLAGS }):fold({},
-    function(acc, tbl)
-        for key, value in pairs(tbl) do
-            acc[key] = value
-        end
+M.CTERM_COLOR_OPTIONS = {
+    ctermfg = is_number,
+    ctermbg = is_number,
+}
 
-        return acc
-    end)
+--- The keys that are allowed to be set on a group definition.
+M.ALLOWED_OPTIONS = vim.iter({ M.COLOR_OPTIONS, M.CTERM_COLOR_OPTIONS, M.VIRTUAL_OPTIONS, M.GUI_OPTIONS, M.GUI_FLAGS })
+    :fold({},
+        function(acc, tbl)
+            for key, value in pairs(tbl) do
+                acc[key] = value
+            end
+
+            return acc
+        end)
 -- Override the metatable so any arbitrary numeric key lookup will return the
 -- link validator
 setmetatable(M.ALLOWED_OPTIONS, {
@@ -292,9 +307,9 @@ M.Group = { ---@diagnostic disable-line: missing-fields
     ---@param resolve boolean|nil Should we resolve/unroll nested links?
     to_hl = function(self, resolve)
         -- If we only have a single link and no other attributes, we want to
-        -- use Neovim's built-in `link` key. We want to avoid using `link`
-        -- in any other cases because when `link` is present, (Neo)vim will
-        -- ignore any other properties we've passed in.
+        -- use Neovim's built-in `link`. We want to avoid using `link` in any
+        -- other cases because when `link` is present, all other properties
+        -- we've passed in will be ignored.
         --
         -- Getting rid of this special case at the beginning makes it so that
         -- if we progress past this point, we're dealing with a combo link or

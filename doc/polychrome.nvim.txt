@@ -6,19 +6,24 @@
 1. Introduction                                      *polychrome-introduction*
 
 `polychrome.nvim` is a colorscheme creation micro-framework for Neovim. The
-main features of `polychrome` are:
+main features of `polychrome.nvim` are:
 
- * simple and terse syntax
- * minimal boilerplate
- * colors can be specified in many different colorspaces (`hsl`, `Oklab`, etc)
- * automatic and accurate color clipping down to sRGB when needed
+     * simple and terse syntax
+     * minimal boilerplate
+     * colors can be specified in many different colorspaces (`hsl`, `Oklab`, etc)
+     * automatic and accurate color clipping down to sRGB when needed
+
+If you want to look at a complete example already using polychrome.nvim, check
+out `sunburn.nvim` (https://github.com/loganswartz/sunburn.nvim).
 
 ==============================================================================
 2. Quickstart                                          *polychrome-quickstart*
 
-To start testing things out, open a new (empty) buffer and run `:Polychrome
-template theme`. This will fill the buffer with an empty colorscheme that
-contains all the most common highlight groups, and looks something like this:
+To start testing things out, open a new (empty) buffer and use the
+`:Polychrome template theme` command to load a template (see
+|:Polychrome_template_theme|). This will fill the buffer with an empty
+colorscheme that contains all the most common highlight groups, and looks
+something like this:
 
 >lua
     local Colorscheme = require('polychrome').Colorscheme
@@ -37,21 +42,20 @@ live preview mode. You can then start setting highlights, and you'll instantly
 see the changes in your current window. You can disable the live preview mode
 with `:Polychrome preview stop`.
 
-If you want to dive into a complete example already using polychrome.nvim, check
-out `sunburn.nvim` (https://github.com/loganswartz/sunburn.nvim).
-
 ==============================================================================
 3. Usage                                                    *polychrome-usage*
 
-Using `polychrome` to create a colorscheme involves 2 high-level steps:
+Using `polychrome.nvim` to create a colorscheme involves 2 high-level steps:
 
     1. Create a colorscheme definition, containing all your highlights
     3. Call the `:apply()` method on your colorscheme definition when the user
        runs `:colorscheme your_colorscheme
 
+                                          *polychrome-creating-a-colorscheme*
 Creating a colorscheme definition ~
 
-Here's the simplest way to create a definition:
+A colorscheme is defined by importing the `Colorscheme` object, and then
+calling the `define` method with a name and a function:
 
 >lua
     local Colorscheme = require('polychrome').Colorscheme
@@ -61,61 +65,11 @@ Here's the simplest way to create a definition:
     end)
 <
 
-The second argument to `Colorscheme.define` is a function, and inside that
-function is where all your highlights will be defined. Generally, a single
-highlight in a colorscheme definition looks like this:
+Inside the closure you pass to `Colorscheme.define` is where all your
+highlights will be defined. Refer to |polychrome-groups| and
+|polychrome-attributes| for more information on how to define some highlights.
 
->lua
-    <highlight name> { <attribute> = <value> }
-<
-
-Here's a more concrete example:
-
->lua
-    Comment { fg = '#ff0000' }
-<
-
-That definition is effectively the same as `:hi Comment fg='#ff0000'`; in
-other words, it would highlight all comment text as pure red. This is probably
-the simplest example possible, but `polychrome` has a lot of additional forms
-that you can use to apply more complex highlights.
-
-Here are some examples of the different syntaxes and helpers that are
-available:
-
->lua
-    -- most groups can be specified like this
-    Constant { fg = rgb(0, 255, 0), bg = '#ff0000' }
-
-    -- specify a GUI feature
-    Underline { gui = 'underline' }
-    -- we actually inject all the common GUI helpers for convenience
-    -- (this is documented later on in the README)
-
-    -- link a group to another one (equivalent to `:hi link Boolean Constant`)
-    Boolean { Constant }
-
-    -- groups that use `@` or other special characters (ex. treesitter groups)
-    -- need a slightly different syntax: _'<name>' instead of <name>
-    _'@punctuation.delimiter' { fg = rgb(0, 255, 0), bg = oklch(0, 0, 0) }
-
-    -- linking groups with special characters works similarly to normal
-    _'@punctuation.delimiter' { Constant }
-<
-
-That example shows off the `rgb` and `oklch` helper commands, but quite a few
-more colorspaces are supported. Refer to |polychrome.nvim-colorspaces| for a
-full list.
-
-The helpers are automatically injected into the colorscheme definition context,
-so you don't need to `require` them if you don't want to (although you can
-anyway for clarity, or improved editor hints). If you prefer to import the
-helpers explicitly, they are all available to import like so:
-
->lua
-    local rgb = require('polychrome').rgb
-<
-
+                                          *polychrome-applying-a-colorscheme*
 Applying your colorscheme ~
 
 When you run `:colorscheme somecolorscheme` in (Neo)vim, it looks for a file
@@ -126,8 +80,8 @@ colorscheme being applied. Traditionally, this meant that most colorschemes
 were just a single file in `colors/` with a long list of `:hi ...` commands in
 it.
 
-When you define a colorscheme with `polychrome`, it doesn't actually *apply*
-the highlights immediately. Instead, you've simply created a colorscheme
+When you define a colorscheme with `polychrome.nvim`, it doesn't actually
+apply the highlights immediately. Instead, you've simply created a colorscheme
 definition that can be moved around or returned like any other Lua object:
 
 >lua
@@ -145,17 +99,438 @@ This can be accomplished by creating a file in `colors/` named
 This should be all that's needed to make your colorscheme loadable.
 
 ==============================================================================
-4. Supported Colorspaces                              *polychrome-colorspaces*
+4. Highlight Groups          *polychrome-groups* *polychrome-highlight-groups*
+
+A highlight group definition usually looks something like this:
+
+>lua
+    <highlight name> { <attribute> = <value> }
+<
+
+Any given group can have 1 or more attributes, and 0 or more links. Here's a
+few concrete examples:
+
+>lua
+    -- 1 attribute
+    Constant { bg = '#00ff00' }
+
+    -- 2 attributes
+    Error { fg = '#ff0000', bold = true }
+
+    -- 1 link
+    SpellBad { Error }
+
+    -- 1 attribute and 1 link
+    SpellBad { Error, undercurl = true }
+
+    -- 2 links
+    Search { Constant, Bold }
+<
+
+Check |polychrome-attributes| for a full list of all the supported attributes,
+and |polychrome-links| for more info on linking groups together.
+
+                                     *polychrome-name-escape*  *polychrome-_*
+
+There are some groups that use `@` or other special characters in the name of
+the highlight group. The most likely examples of this you'll run into are
+treesitter groups like `@error` or `@punctuation.delimiter`. For those groups,
+you'll need to use a slightly different syntax since Lua doesn't allow using
+those symbols in identifier names. For these scenarios, use `_'name' { ... }`
+instead of `name { ... }`:
+
+>lua
+    _'@error' { fg = rgb(255, 0, 0) }
+
+    _'@punctuation.delimiter' { Constant }
+<
+
+                                         *polychrome-name-escape-explanation*
+
+The reason that this is necessary is a bit complicated, and I'll explain it
+here solely to satisfy the curiosity of people who might be interested.
+Essentially, the way that colorscheme definitions work is that the closure
+passed to `Colorscheme.define` is hijacked by polychrome, and has its
+environment modified before it is run. When the function is actually
+evaluated, say you do something like this:
+
+>lua
+    SpellBad { sp = Error.fg, Undercurl }
+<
+
+What actually happens is that Lua looks for a variable in the function's
+environment with the identifier `SpellBad`, and if it's not found, creates a
+new empty highlight group with that name. If a group has already been defined
+(for example, `Error`), it is simply fetched from the function's environment
+like any other variable in Lua. Lua tracks the environment of a function via a
+regular table, so the environment of that definition might look like this:
+
+>lua
+    {
+	['Error'] = <table 1>,
+	['Undercurl'] = <table 2>,
+	['SpellBad'] = <table 3>,
+    }
+<
+
+Since the name of the highlight group is actually just a variable identifier,
+it has to conform to the rules set by Lua, so just doing something like this
+will be a syntax error:
+
+>lua
+    @error { ... }
+    -- error: Unexpected symbol `@`
+<
+
+But, since the environment is just a table and tables allow arbitrary string
+keys, we can actually provide a function that directly accesses the
+environment to bypass the limitations imposed on variable names.
+
+This is exactly what `_` is: a function that takes a single string argument
+and directly accesses the environment table. The `_'@error'` syntax shown
+above is actually an alternate form of `_('@error')`, because Lua allows you
+to omit the parentheses of a function call if you are passing just a single
+string or table to the function.
+
+So with `_`, we can successfully register `@error`, and our environment would
+look like this:
+
+>lua
+    {
+	['Error'] = <table 1>,
+	['Undercurl'] = <table 2>,
+	['SpellBad'] = <table 3>,
+	['@error'] = <table 4>,
+    }
+<
+
+All that being said, don't worry about any of these internal details. If your
+highlight group has a forbidden symbol in it, just wrap it in quotes and
+prefix it with `_` to get it working.
+
+==============================================================================
+5. Highlight Attributes                                *polychrome-attributes*
+
+You can specify one or more attributes for any given highlight group, and in
+most instances, the attributes that `polychrome.nvim` accepts is a superset of
+the values that `nvim_set_hl` accepts. However, a few are ignored, and a few
+have some extra functionality included.
+
+                                           *polychrome-attributes-unmodified*
+Unmodified Attributes ~
+
+These attributes work exactly the same as they do normally with `nvim_set_hl`:
+
+    * `blend`
+    * `bold`
+    * `standout`
+    * `underline`
+    * `undercurl`
+    * `underdouble`
+    * `underdotted`
+    * `underdashed`
+    * `strikethrough`
+    * `italic`
+    * `reverse`
+    * `nocombine`
+
+Since these attributes require a boolean value, `polychrome.nvim` autoinjects
+some corresponding highlight groups that define `<attribute> = true` for each
+of these attributes to reduce boilerplate. You can use the predefined helper
+highlight group to avoid needing to specify `= true` every time:
+
+>lua
+    -- same as specifying `bold = true`
+    Title { Bold }
+<
+
+However, you are still free to use the attributes directly if you prefer:
+
+>lua
+    Title { bold = true }
+<
+
+Here are all the predefined helper highlight group names (they're just the
+attribute name with the first letter capitalized):
+
+    * `Bold`
+    * `Standout`
+    * `Underline`
+    * `Undercurl`
+    * `Underdouble`
+    * `Underdotted`
+    * `Underdashed`
+    * `Strikethrough`
+    * `Italic`
+    * `Reverse`
+    * `Nocombine`
+
+Example usage:
+
+>lua
+    -- all of these are functionally equivalent
+    RedUnderline { fg = 'red', Underline }
+    RedUnderline { fg = '#ff0000', underline = true }
+    RedUnderline { fg = rgb(255, 0, 0), Underline }
+    RedUnderline { fg = rgb(255, 0, 0), underline = true }
+<
+
+                                             *polychrome-attributes-extended*
+Extended Attributes ~
+
+These attributes have some additional functionality that is provided by
+polychrome:
+
+    * `fg` - foreground color
+    * `bg` - background color
+    * `sp` - special color (ex: could be the color of underlines, depending on
+	   terminal support)
+
+These work as they normally do with `nvim_set_hl` (accepts a color name or hex
+string), but they also support `polychrome.nvim` color objects. Check
+|polychrome-colorspaces| for a full list of all the helpers that polychrome
+provides.
+
+Here are some usage examples:
+
+>lua
+    -- using a color name pre-defined by Neovim
+    Error { fg = 'red' }
+
+    -- using the `rgb` helper
+    Comment { bg = rgb(22, 22, 22) }
+
+    -- supported value types can be mixed and matched without issue
+    Todo { fg = 'white', bg = '#ff0000' }
+
+    -- setting a red undercurl
+    SpellBad { Undercurl, sp = hsl(360, 100, 50) }
+<
+
+                                                  *polychrome-attributes-new*
+New Attributes ~
+
+These are attributes that don't exist at all in `nvim_set_hl`. They may have
+been added for convenience, to provide familiarity for people who liked
+previously using `:hi`, or to ease transitions from other colorscheme
+frameworks.
+
+    * `gui` - a comma-delimited list of GUI features, ex: `bold,underline`.
+	    It's automatically converted to the correct set of boolean flags
+	    internally.
+
+Here are some usage examples:
+
+>lua
+    BoldUnderline { gui = 'bold,underline' }
+    -- which is the same as:
+    BoldUnderline { bold = true, underline = true }
+    -- which is also the same as:
+    BoldUnderline { Bold, Underline }
+<
+
+Ignored Attributes ~
+
+These attributes are not allowed or recognized, despite being valid options
+for `nvim_set_hl`.
+
+    * `link` - replaced by |polychrome-links|
+    * `cterm` - mostly redundant, so I've ignored it for now. Support could be
+	      added if desired.
+
+==============================================================================
+6. Links                                                    *polychrome-links*
+
+The native `link` attribute for highlight groups is not supported, because
+`polychrome.nvim` provides a more powerful version of links in its place. To
+specify a link, simply pass a highlight group without a key:
+
+>lua
+    Todo { Error }
+<
+
+You may be asking, why not just use `link`? The builtin `link` is useful in
+simple situations, but quickly limits you if you want to have more complex or
+composable highlight groups. For example, any time a `link` attribute is
+defined, it causes all other attributes to be ignored entirely. This means
+that `link` is really only useful for aliasing one highlight group name to
+another.
+
+For example, you will likely come across highlight groups like
+`DiagnosticInfo` and `DiagnosticInfoUnderline` in the wild, and it's clear
+that `DiagnosticInfoUnderline` is simply an underlined version of
+`DiagnosticInfo`. Because of how the native `link` works, you can't just do
+something like:
+
+>lua
+    vim.api.nvim_set_hl(0, 'DiagnosticInfo', { fg = '#0000ff' })
+    vim.api.nvim_set_hl(0, 'DiagnosticInfoUnderline', { link = 'DiagnosticInfo', underline = true })
+
+    -- expected:
+    -- DiagnosticInfoUnderline = { fg = '#0000ff', underline = true }
+    -- actual:
+    -- DiagnosticInfoUnderline = { fg = '#0000ff' }
+<
+
+The link system provided by `polychrome.nvim` is, by contrast, much more
+powerful. Polychrome allows multiple links, AKA "combo links", where you pass
+a combination of one or many links and one or many attributes. The previous
+example "just works" in polychrome:
+
+>lua
+    DiagnosticInfo { fg = '#0000ff' }
+    DiagnosticInfoUnderline { DiagnosticInfo, Underline }
+    -- becomes:
+    -- DiagnosticInfoUnderline = { fg = '#0000ff', underline = true }
+<
+
+This is because `polychrome.nvim` will automatically "fold" links together if
+multiple links are passed or extra attributes are given. This makes it much
+easier to create composable groups, or make groups that are just slightly
+different from other ones, without needing to entirely redefine them every
+time.
+
+Currently, due to the nature of Lua tables, the order in which things are
+folded is a bit unintuitive. First, the links are folded together in the order
+they are passed in the table. Then, all the manually specified attributes are
+combined and applied after the links.
+
+If a single link is provided with no other attributes or links, polychrome
+will use a native `link` since there is no loss in functionality in that
+instance.
+
+Currently, due to how these links work, any group you are linking to needs to
+have already been defined:
+
+>lua
+    -- works
+    DiagnosticInfo { fg = '#0000ff' }
+    DiagnosticInfoUnderline { DiagnosticInfo, Underline }
+
+    -- does not work
+    DiagnosticInfoUnderline { DiagnosticInfo, Underline }
+    DiagnosticInfo { fg = '#0000ff' }
+<
+
+==============================================================================
+7. Advanced Usage                                  *polychrome-advanced-usage*
+
+For certain more complex scenarios, there are a few handy tricks that can make
+your colorscheme definition a lot cleaner.
+
+Linking a single attribute from another group ~
+
+You may find yourself wanting to link only a single attribute from another
+highlight group, rather than all of them from the group. For example, say we
+have `Error` defined and we want to use the `fg` color from it as the color
+for `DiagnosticError`, but we don't want `DiagnosticError` to inherit the
+`bold` from `Error`. The solution is simply to grab the `fg` from `Error`
+directly, and pass it as the `fg` to `DiagnosticError`:
+
+>lua
+    Error { fg = 'red', Bold }
+    DiagnosticError { fg = Error.fg }
+<
+
+Linking an attribute value to a different attribute ~
+
+Similar to the example above, what if we want to take the value of an
+attribute from one group, but assign it as a different attribute on another
+highlight group? For example, let's say we want `SpellBad` to be highlighted
+normally, but with an undercurl with the same color as the `fg` of `Error`. We
+can accomplish this by pulling the `fg` from `Error`, and assigning it to the
+`sp` of `SpellBad`:
+
+>lua
+    Error { fg = 'red', Bold }
+    SpellBad { sp = Error.fg, Undercurl }
+<
+
+Defining a palette separately ~
+
+Colors are objects (tables), so there is no reason you can't define and
+manipulate them outside of a colorscheme definition. This makes it easy to
+define multiple palettes, or collect all your colors in one location:
+
+>lua
+    -- lua/your_theme/palette.lua
+
+    local rgb = require('polychrome.color.rgb')
+
+    local palette = {
+	red = rgb(255, 0, 0), -- specify values as individual arguments
+	green = rgb({ 0, 255, 0 }), -- or pass an ordered table
+	blue = rgb({ r = 0, g = 0, b = 255 }), -- or even specify the components by name
+    }
+
+    return palette
+<
+>lua
+    -- colors/your_theme.lua
+
+    local Colorscheme = require('polychrome').Colorscheme
+    local palette = require('your_theme.palette')
+
+    Colorscheme.define('your_theme', function ()
+	Normal { bg = palette.red }
+    end):apply()
+<
+
+In fact, you don't even need to define your colorscheme inside the
+`colors/your_theme.lua`; all that's needed is to call `apply()` on a colorscheme
+object in `colors/your_theme.lua`:
+
+>lua
+    -- lua/your_theme/highlights.lua
+
+    local Colorscheme = require('polychrome').Colorscheme
+    local palette = require('your_theme.palette')
+
+    local your_theme = Colorscheme.define('your_theme', function ()
+	Normal { bg = palette.red }
+    end)
+
+    return your_theme
+<
+>lua
+    -- colors/your_theme.lua
+
+    local your_theme = require('your_theme.highlights')
+
+    your_theme:apply()
+<
+
+Colorscheme variants ~
+
+Since colorschemes are just tables, you can treat them like objects, and do
+things like providing several variants of your colorscheme. Here's a very
+simple example:
+
+>lua
+    -- colors/your_theme.lua
+
+    local main = require('your_theme.main')
+    local alternate = require('your_theme.alternate')
+
+    local use_alternate = vim.g.your_theme_variant == 'alternate'
+    local theme = use_alternate and alternate or main
+
+    theme:apply()
+<
+
+==============================================================================
+8. Supported Colorspaces                              *polychrome-colorspaces*
 
 Currently, `polychrome.nvim` supports the following colorspaces:
 
-    * `sRGB` (hex string or integer values)
-    * `Linear RGB` (non-gamma-corrected)
-    * `HSL`
-    * `Oklab`
-    * `Oklch`
-    * `CIEXYZ`
-    * `LMS`
+    * sRGB (the `rgb` helper)
+    * sRGB hex string (Neovim natively supports; just pass as a normal string)
+    * Linear (non-gamma-corrected) RGB (`lrgb`)
+    * HSL (`hsl`)
+    * Oklab (`oklab`)
+    * Oklch (`oklch`)
+    * CIEXYZ (`ciexyz`)
+    * LMS (`lms`)
 
 Many of these color spaces can encode values outside of the sRGB color space,
 but Neovim (and terminals in general) currently only support sRGB. For our
@@ -165,12 +540,19 @@ convert any colors to an sRGB hex string.
 It should be noted that if you specify a color that falls outside the sRGB
 colorspace, `polychrome.nvim` won't magically allow you to display that color
 completely accurately. The end result will be the closest displayable color in
-the sRGB colorspace. See |polychrome.nvim-color-clipping| for more info.
+the sRGB colorspace. See `Chroma Clipping` at the end of this section for more
+info.
 
 For each supported colorspace, `polychrome.nvim` provides a helper that will
-handle automatically converting a given color to sRGB. Below are some examples
-of how to specify `#ff0000` in each colorspace, using the provided helpers:
+handle automatically converting a given color to sRGB, and allow specifying
+colors in a more ergonomic way. The helpers are automatically injected into
+the colorscheme definition context, so you don't need to `require` them if you
+don't want to (although you can anyway for clarity).
 
+Below are some examples of how to specify `#ff0000` in each colorspace, using
+the provided helpers:
+
+                                                 *polychrome-colorspaces-rgb*
 sRGB ~
 
 sRGB, also known as gamma-corrected RGB, has red, green, and blue components
@@ -182,7 +564,7 @@ people are thinking of when they think "RGB".
     -- Neovim natively supports hex strings, so no helper is needed
     local red = '#ff0000'
 
-    -- there *is* also a helper available, if you want to use integers:
+    -- there is also a helper available, if you want to use integers:
     local rgb = require('polychrome').rgb
 
     -- alternative forms include:
@@ -190,6 +572,7 @@ people are thinking of when they think "RGB".
     local red = rgb({ r = 255, g = 0, b = 0 })
 <
 
+                                                *polychrome-colorspaces-lrgb*
 lRGB ~
 
 Linear RGB, also known as non-gamma-corrected RGB, is similar to sRGB.
@@ -206,6 +589,7 @@ colorspaces much simpler.
     local red = lrgb({ lr = 1, lg = 0, lb = 0 })
 <
 
+                                                 *polychrome-colorspaces-hsl*
 HSL ~
 
 Many people are also familiar with HSL, especially if they work in web
@@ -221,6 +605,7 @@ perceptual accuracy.
     local red = hsl({ h = 0, s = 100, l = 50 })
 <
 
+                                               *polychrome-colorspaces-oklab*
 Oklab ~
 
 Oklab is a relatively new colorspace that was created to provide high
@@ -235,6 +620,7 @@ perceptual accuracy. It's essentially a tweaked version of the existing
     local red = oklab({ L = 0.62795, a = 0.22486, b = 0.12584 })
 <
 
+                                               *polychrome-colorspaces-oklch*
 Oklch ~
 
 In the same way that HSL provides a human-intuitive way of specifying RGB
@@ -251,6 +637,7 @@ same in raw sRGB or HSL.
     local red = oklch({ L = 0.62795, c = 0.25768, h = 29.23387 })
 <
 
+                                                 *polychrome-colorspaces-cie*
 CIE XYZ ~
 
 The CIE XYZ colorspace is meant to encompass "all color sensations that are
@@ -267,6 +654,7 @@ colors in this colorspace directly.
     local red = ciexyz({ X = 0.25456, Y = 0.34053, Z = 0.10514 })
 <
 
+                                                 *polychrome-colorspaces-lms*
 LMS ~
 
 The LMS colorspace is meant to model the actual response of the cones in the
@@ -281,6 +669,7 @@ don't want to specify colors in this colorspace directly.
     local red = lms({ L = 0.41222, M = 0.21190, S = 0.08830 })
 <
 
+                                         *polychrome-colorspaces-unsupported*
 Currently Unsupported ~
 
 There are countless numbers of other colorspaces that aren't currently
@@ -294,30 +683,51 @@ colorspaces that will hopefully be supported in the future:
     * `Okhsv`
     * `HSV`
 
+                                                 *polychrome-chroma-clipping*
+Chroma clipping ~
+
+When converting from a larger gamut down into sRGB, chroma clipping is
+performed using code adapted from Björn Ottosson's methods described
+[here](https://bottosson.github.io/posts/gamutclipping/#source-code). The
+clipping is performed in the Oklab colorspace, which should result in a very
+accurate translation.
+
 ==============================================================================
-5. Live preview mode                                 *polychrome-live-preview*
+9. Live preview mode                                 *polychrome-live-preview*
 
-`polychrome` includes a live preview mode that vastly streamlines the process
-of creating a colorscheme. When enabled, several things happen:
+`polychrome.nvim` includes a live preview mode that vastly streamlines the
+process of creating a colorscheme. To start the live preview mode, run
+`:Polychrome preview start`, or `require('polychrome.preview').start()` from a
+Lua context.
 
-    * The contents of the current buffer are loaded as a lua module, and run
-    * Any colorscheme definitions in it are automatically captured
-    * The captured definition is automatically applied
+When enabled, several things happen:
+
+    * The contents of the current buffer are run as a lua module
+    * Any colorscheme definitions are automatically captured and applied
     * Every highlight group name found in the buffer is highlighted with that
       group (ex: every occurence of the string "Comment" in the buffer is
       highlighted with the `Comment` highlight group)
 
 Additionally, diagnostics are created for any common issues or errors found in
-the colorscheme definition. This creates a very tight feedback loop as you
-add and tweak your highlights, as you can immediately see the effects of each
+the colorscheme definition. This creates a very tight feedback loop as you add
+and tweak your highlights, and you can immediately see the effects of each
 change as you make them.
 
+When previewing, the current file is reloaded automatically via autocmd
+(specifically `TextChanged`, `TextChangedI`, `TextChangedP`, and
+`TextChangedT`), and throttles reloads to every 500ms by default, shared across
+the autocommands.
+
+You can deactivate the live editing mode with `:Polychrome preview stop`, or
+`require('polychrome.preview').stop()` from a Lua context.
+
 ==============================================================================
-6. Commands                                              *polychrome-commands*
+10. Commands                               *:Polychrome* *polychrome-commands*
 
 A few user commands are automatically registered in order to make colorscheme
 creation easier. 
 
+                             *:Polychrome_preview* *:Polychrome_preview_start*
 :Polychrome preview [start] ~
 
 Start the live preview mode, via the current buffer. See
@@ -326,10 +736,12 @@ Start the live preview mode, via the current buffer. See
 The `start` argument is optional, so calling `:Polychrome preview` without an
 argument is the same as passing `start`.
 
+                                                   *:Polychrome_preview_stop*
 :Polychrome preview stop ~
 
 Stop the live preview mode.
 
+                          *:Polychrome_template* *:Polychrome_template_theme*
 :Polychrome template {name} ~
 
 Load a template into the current buffer.

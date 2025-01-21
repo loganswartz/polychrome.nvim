@@ -165,4 +165,31 @@ function M.isNaN(x)
     return x ~= x
 end
 
+--- Get the keys of a table that are contiguous integer keys
+---@param tbl table
+function M.get_list_keys(tbl)
+    local keys = {}
+
+    for k, _ in ipairs(tbl) do
+        table.insert(keys, k)
+    end
+
+    return keys
+end
+
+--- Get the keys of a table that are not contiguous integer keys
+---@param tbl table
+function M.get_map_keys(tbl)
+    local keys = {}
+    local list_keys = M.get_list_keys(tbl)
+
+    for k, _ in pairs(tbl) do
+        if not vim.tbl_contains(list_keys, k) then
+            table.insert(keys, k)
+        end
+    end
+
+    return keys
+end
+
 return M

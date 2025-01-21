@@ -7,10 +7,10 @@ A colorscheme creation micro-framework.
 `polychrome.nvim` is a colorscheme creation micro-framework for Neovim. The
 main features of `polychrome` are:
 
- * simple and terse syntax
- * minimal boilerplate
- * colors can be specified in many different colorspaces (`hsl`, `Oklab`, etc)
- * automatic and accurate color clipping down to sRGB when needed
+* simple and terse syntax
+* minimal boilerplate
+* colors can be specified in many different colorspaces (`hsl`, `Oklab`, etc)
+* automatic and accurate color clipping down to sRGB when needed
 
 Here's a fully functional example of a (very basic) colorscheme defined with
 `polychrome`:
@@ -25,8 +25,10 @@ Colorscheme.define('your_theme', function ()
     Comment { fg = rgb(135, 135, 135) }
     Conceal { fg = rgb(222, 222, 222), bg = Comment.fg }
     Cursor { Reverse }
-    Directory { fg = rgb(0, 255, 255) }
+    Directory { fg = '#00ffff' }
     SpellBad { Undercurl }
+    Error { fg = 'red' }
+    Todo { Error, Standout, Underdouble, Italic }
 
     Constant { fg = rgb(0, 255, 255) }
     Boolean { Constant }
@@ -37,18 +39,6 @@ end):apply()
 
 If you want to dive into a complete example already using polychrome.nvim, check
 out [`sunburn.nvim`](https://github.com/loganswartz/sunburn.nvim).
-
-Here's some quick context for people who aren't familiar with how colorschemes
-work in Vim/Neovim:
-
-When you run `colorscheme your_theme`, Neovim looks through the runtimepath for
-some file inside `<some runtimepath entry>/colors`, named `your_theme.vim` or
-`your_theme.lua`, and if found, runs that file. Historically, colorschemes are
-made by simply putting a bunch of `hi` commands in this file (if you want an
-example of this, check out the `runtime/colors` directory of the neovim source).
-Modern plugin managers like `lazy.nvim`, `pckr.nvim`, `vim-plug`, etc. will
-handle adding plugins to the runtimepath, so setting up a plugin is simple if
-you format your project properly.
 
 ## Quick Start
 
@@ -80,16 +70,18 @@ with `:Polychrome preview stop`.
 
 ## Usage
 
-Here are some examples of the different syntaxes and helpers that are available:
+Check `:h polychrome-usage` and `:h polychrome-attributes` for more in-depth
+documentation.
+
+Here are a few examples of some of the different syntaxes and helpers that are
+available:
 
 ```lua
     -- most groups can be specified like this
     Constant { fg = rgb(0, 255, 0), bg = '#ff0000' }
 
     -- specify a GUI feature
-    Underline { gui = 'underline' }
-    -- we actually inject all the common GUI helpers for convenience
-    -- (this is documented later on in the README)
+    Underline { underline = true }
 
     -- link a group to another one (equivalent to `:hi link Boolean Constant`)
     Boolean { Constant }
@@ -97,9 +89,6 @@ Here are some examples of the different syntaxes and helpers that are available:
     -- groups that use `@` or other special characters (ex. treesitter groups)
     -- need a slightly different syntax: _'<name>' instead of <name>
     _'@punctuation.delimiter' { fg = rgb(0, 255, 0), bg = oklch(0, 0, 0) }
-
-    -- linking groups with special characters works similarly to normal
-    _'@punctuation.delimiter' { Constant }
 ```
 
 That example shows off the `rgb` and `oklch` helper commands, but quite a few
@@ -117,85 +106,22 @@ more color systems are supported:
 
 The helpers are automatically injected into the colorscheme definition context,
 so you don't need to `require` them if you don't want to (although you can
-anyway for clarity). If you prefer to import the helpers explicitly:
-
-```lua
-local rgb = require('polychrome').rgb
--- or:
-local rgb = require('polychrome.color.rgb')
-```
-
-Colors are objects (tables), so there is no reason you can't define and
-manipulate them outside of a colorscheme definition. This makes it easy to
-define multiple palettes, or collect all your colors in one location:
-
-```lua
--- lua/your_theme/palette.lua
-
-local rgb = require('polychrome.color.rgb')
-
-local palette = {
-    red = rgb(255, 0, 0), -- specify values as individual arguments
-    green = rgb({ 0, 255, 0 }), -- or pass an ordered table
-    blue = rgb({ r = 0, g = 0, b = 255 }), -- or even specify the components by name
-}
-
-return palette
-```
-
-```lua
--- colors/your_theme.lua
-
-local Colorscheme = require('polychrome').Colorscheme
-local palette = require('your_theme.palette')
-
-Colorscheme.define('your_theme', function ()
-    Normal { bg = palette.red }
-end):apply()
-```
-
-In fact, you don't even need to define your colorscheme inside the
-`colors/your_theme.lua`; all that's needed is to call `apply()` on a colorscheme
-object in `colors/your_theme.lua`:
-
-```lua
--- lua/your_theme/highlights.lua
-
-local Colorscheme = require('polychrome').Colorscheme
-local palette = require('your_theme.palette')
-
-local your_theme = Colorscheme.define('your_theme', function ()
-    Normal { bg = palette.red }
-end)
-
-return your_theme
-```
-
-```lua
--- colors/your_theme.lua
-
-local your_theme = require('your_theme.highlights')
-
-your_theme:apply()
-```
-
-Since colorschemes are just tables, you can treat them like objects, and do
-things like providing several variants of your colorscheme. Here's a simple
-example:
-
-```lua
--- colors/your_theme.lua
-
-local your_theme = require('your_theme.main')
-local youralternatetheme = require('your_theme.alternate')
-
-local alternate = vim.g.your_theme_variant == 'alternate'
-local theme = alternate and your_alternate_theme or your_theme
-
-theme:apply()
-```
+anyway for clarity). Check out `:h polychrome-colorspaces` for more in-depth
+info on all the available helpers.
 
 ### Proper Plugin Structure
+
+Here's some quick context for people who aren't familiar with how colorschemes
+work in Vim/Neovim:
+
+When you run `colorscheme your_theme`, Neovim looks through the runtimepath for
+some file inside `<some runtimepath entry>/colors`, named `your_theme.vim` or
+`your_theme.lua`, and if found, runs that file. Historically, colorschemes are
+made by simply putting a bunch of `hi` commands in this file (if you want an
+example of this, check out the `runtime/colors` directory of the neovim source).
+Modern plugin managers like `lazy.nvim`, `pckr.nvim`, `vim-plug`, etc. will
+handle adding plugins to the runtimepath, so setting up a plugin is simple if
+you format your project properly.
 
 The quick start section is great for testing things out, but if you're writing a
 full theme, it makes sense to set up a repo in a certain way, for maximum
@@ -273,17 +199,14 @@ This way, other plugins can use your palettes (via
 
 When you go to write documentation for users of your colorscheme, assuming that
 everything is set up correctly, all a user needs to do is install your plugin
-and `polychrome.nvim`, and then run `colorscheme your_theme`. Here's a simple
-example of a config for `lazy.nvim`:
+and `polychrome.nvim`, and then run `colorscheme your_theme` somewhere in their
+config. Here's a simple example of a spec for `lazy.nvim`:
 
 ```lua
 {
     'you/your_theme',
     dependencies = {
         'loganswartz/polychrome.nvim'
-    },
-    config = function()
-        vim.cmd.colorscheme 'your_theme'
     },
 }
 ```
@@ -295,25 +218,23 @@ function is run. These groups represent all the supported spcial GUI features
 supported by Neovim at this time. Currently, this means:
 
 ```lua
-    Strikethrough { gui = "strikethrough" }
-    Underline { gui = "underline" }
-    Underdouble { gui = "underdouble" }
-    Undercurl { gui = "undercurl" }
-    Underdotted { gui = "underdotted" }
-    Underdashed { gui = "underdashed" }
-    Reverse { gui = "reverse" }
-    Standout { gui = "standout" }
-    Bold { gui = "bold" }
-    Italic { gui = "italic" }
+    Strikethrough { strikethrough = true }
+    Underline { underline = true }
+    Underdouble { underdouble = true }
+    Undercurl { undercurl = true }
+    Underdotted { underdotted = true }
+    Underdashed { underdashed = true }
+    Reverse { reverse = true }
+    Standout { standout = true }
+    Bold { bold = true }
+    Italic { italic = true }
 ```
 
 These groups are not special in any way, so use them as you would any other:
 
 ```lua
     SpellBad { Underdotted }
-    SpellCap { gui = Underdashed.gui }
-    -- of course, you can also just use the regular feature name directly
-    SpellLocal { gui = "underdouble" }
+    SpellCap { underdashed = Underdashed.underdashed }
 ```
 
 You can overwrite any of these by simply specifying them yourself in your
@@ -330,22 +251,20 @@ end, { inject_gui_groups = false })
 
 You can turn on a dynamic preview of your colorscheme via the `:Polychrome
 preview start` command, or `require('polychrome.preview').start()` from a Lua
-context. Running this command does the following:
+context.
 
-  1. Runs the contents of the current buffer, and reapplies any colorscheme
-     defined anywhere within it (even via `require`).
-  2. Get the names of all active highlight groups, and applies those groups to
-     all literal strings in the current buffer matching those names (ie. all
-     occurences of `Comment` in the buffer will be highlighted with the
-     "Comment" highlight group)
+When enabled, several things happen:
 
-`require('polychrome.preview').start()` registers these actions via autocmd
-(specifically `TextChanged`, `TextChangedI`, `TextChangedP`, and
-`TextChangedT`), and throttles reloads to every 500ms by default, shared across
-the autocommands.
+* The contents of the current buffer are run as a lua module
+* Any colorscheme definitions are automatically captured and applied
+* Every highlight group name found in the buffer is highlighted with that group
+  (ex: every occurence of the string "Comment" in the buffer is highlighted with
+  the `Comment` highlight group)
 
-You can deactivate the live editing mode with `:Polychrome preview stop`, or
-`require('polychrome.preview').stop()` from a Lua context.
+Additionally, diagnostics are created for any common issues or errors found in
+the colorscheme definition. This creates a very tight feedback loop as you add
+and tweak your highlights, and you can immediately see the effects of each
+change as you make them.
 
 ## Finding highlight groups
 
