@@ -500,7 +500,28 @@ object in `colors/your_theme.lua`:
     your_theme:apply()
 <
 
-Colorscheme variants ~
+                                              *polychrome-light-dark-variants*
+Light/dark colorscheme variants ~
+
+You can use `vim.o.background` (|'background'|) to create light and dark
+variants of your theme. See the vim help for more info, but by doing it this
+way, any time `vim.o.background` is changed, the colorscheme will
+automatically reload.
+
+>lua
+    -- colors/your_theme.lua
+
+    local light = require('your_theme.light')
+    local dark = require('your_theme.dark')
+
+    local theme = vim.o.background == 'dark' and dark or light
+
+    theme:apply()
+<
+
+
+                                                  *polychrome-custom-variants*
+Other colorscheme variants ~
 
 Since colorschemes are just tables, you can treat them like objects, and do
 things like providing several variants of your colorscheme. Here's a very
@@ -516,6 +537,82 @@ simple example:
     local theme = use_alternate and alternate or main
 
     theme:apply()
+<
+
+If you're only providing light/dark variants of your theme, make sure to use
+the approach described in |polychrome-light-dark-variants| instead, since
+that's a native vim feature.
+
+                                  *polychrome-third-party-plugin-live-preview*
+Live preview of 3rd party plugin highlights ~
+
+You can get the |polychrome-live-preview| mode working with nearly any
+well-behaving plugin, so long as you set up the theme integration properly.
+
+In order for a plugin to be "well-behaving", it needs to a) support specifying
+an existing highlight group as the highlight, and b) properly reload its
+highlights when `ColorSchemePre` / `ColorScheme` events fire. If it meets
+these conditions, it should be able to get it to work with the live preview.
+
+When creating the integration, you need to make sure to define any highlights
+for the plugin in your theme spec, and then refer to those in the actual
+plugin integration. You don't want to define any new highlights in the
+integration itself. Here's an example `lualine.nvim` integration:
+
+>lua
+    -- lua/your_theme/theme.lua
+
+    local Colorscheme = require('polychrome').Colorscheme
+
+    local your_theme = Colorscheme.define('your_theme', function ()
+	GreenBackground { bg = '#00ff00', fg = '#222222' }
+	BlueBackground { bg = '#0000ff', fg = '#222222' }
+	RedBackground { bg = '#ff0000', fg = '#222222' }
+	YellowBackground { bg = '#ffff00', fg = '#222222' }
+    end)
+
+    return your_theme
+<
+>lua
+    -- lua/lualine/themes/your_theme.lua
+
+    return {
+	normal = {
+	    a = 'GreenBackground',
+	},
+	insert = {
+	    a = 'BlueBackground',
+	},
+	visual = {
+	    a = 'RedBackground',
+	},
+	command = {
+	    a = 'YellowBackground',
+	},
+    }
+<
+
+With your integration set up like this, live preview should work automatically
+On the other hand, something like would have the same appearance, but would
+not work with live preview:
+
+>lua
+    -- lua/lualine/themes/your_theme.lua
+
+    return {
+	normal = {
+	    a = { bg = '#00ff00', fg = '#222222' },
+	},
+	insert = {
+	    a = { bg = '#0000ff', fg = '#222222' },
+	},
+	visual = {
+	    a = { bg = '#ff0000', fg = '#222222' },
+	},
+	command = {
+	    a = { bg = '#ffff00', fg = '#222222' },
+	},
+    }
 <
 
 ==============================================================================
@@ -703,7 +800,11 @@ Lua context.
 When enabled, several things happen:
 
     * The contents of the current buffer are run as a lua module
-    * Any colorscheme definitions are automatically captured and applied
+    * If a colorscheme definition is present in the buffer, it's automatically
+      captured
+    * The `ColorSchemePre` autocommand fires
+    * The captured colorscheme is applied to the buffer
+    * The `ColorScheme` autocommand fires
     * Every highlight group name found in the buffer is highlighted with that
       group (ex: every occurence of the string "Comment" in the buffer is
       highlighted with the `Comment` highlight group)
@@ -720,6 +821,10 @@ the autocommands.
 
 You can deactivate the live editing mode with `:Polychrome preview stop`, or
 `require('polychrome.preview').stop()` from a Lua context.
+
+If some 3rd party plugins aren't reloading their highlights while in live
+preview mode, check out |polychrome-third-party-plugin-live-preview| to make
+sure you have your integrations set up properly.
 
 ==============================================================================
 10. Commands                               *:Polychrome* *polychrome-commands*

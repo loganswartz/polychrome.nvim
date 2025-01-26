@@ -30,7 +30,7 @@ local function apply_hl_group_name_hl(groups, line_nr, line)
     end
 end
 
-local function apply_color_obj_hl(groups, line_nr, line)
+local function apply_color_obj_hl(line_nr, line)
     local start, _end, name, a, b, c = line:find(COLOR_REGEX)
 
     if start ~= nil then
@@ -58,16 +58,12 @@ local function apply_highlights()
 
     for idx, line in ipairs(lines) do
         apply_hl_group_name_hl(groups, idx, line)
-        apply_color_obj_hl(groups, idx, line)
+        apply_color_obj_hl(idx, line)
     end
 end
 
 --- Extract a colorscheme from the current buffer.
 local function apply_colorscheme()
-    if vim.bo.filetype ~= 'lua' then
-        vim.notify('[polychrome] Cannot live reload colorscheme because it is not a Lua file!')
-    end
-
     -- clear any previous matches
     clear_highlights()
 
@@ -76,8 +72,11 @@ local function apply_colorscheme()
     POLYCHROME_EDITING = true
     local definition = load(utils.read_buffer(0))
     if not definition then
-        return -- not runnable
+        return
     end
+
+    -- valid lua, so set the filetype in case it's a template
+    vim.bo.filetype = 'lua'
 
     -- run it
     local ok = pcall(definition)
@@ -92,10 +91,28 @@ local function apply_colorscheme()
     end
 
     -- reapply the colorscheme
-    ok = pcall(function() POLYCHROME_EDITING:apply() end)
-    if not ok then
-        return
-    end
+    pcall(function()
+        -- Fire ColorScheme events.
+        --
+        -- Among other things, firing these events will usually allow plugins
+        -- to reload their colors properly, so they will actually be able to
+        -- live reload their colors as well.
+        --
+        -- According to `:help ColorScheme`, `<amatch>` should be the name of
+        -- the colorscheme, so we have to pass it to `pattern` here. `<afile>`
+        -- is supposed to be the current file when the `:colorscheme` command
+        -- was run, but it appears that `vim.api.nvim_exec_autocmds` explicitly
+        -- hardcodes null for that, so it appears they want to prevent
+        -- non-internal calls from being able to set that value.
+        --
+        -- https://github.com/neovim/neovim/blob/b8e947ed4ed04f9aeef471f579451bbf2bb2993d/src/nvim/api/autocmd.c#L771
+        vim.api.nvim_exec_autocmds('ColorSchemePre', { pattern = POLYCHROME_EDITING.name })
+
+        -- apply the highlights
+        POLYCHROME_EDITING:apply()
+
+        vim.api.nvim_exec_autocmds('ColorScheme', { pattern = POLYCHROME_EDITING.name })
+    end)
 end
 
 local function apply_preview()
@@ -143,6 +160,11 @@ function M.stop()
         vim.cmd.colorscheme(PREVIOUS_COLORSCHEME)
         PREVIOUS_COLORSCHEME = nil
     end
+end
+
+-- See |hitest.vim|
+function M.show_hitest()
+    vim.cmd [[ so $VIMRUNTIME/syntax/hitest.vim ]]
 end
 
 return M
