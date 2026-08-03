@@ -1,4 +1,14 @@
-local utils = require('polychrome.utils')
+local utils = require("polychrome.utils")
+
+local function ensure_left_arg_is_color(left, right)
+    -- "number + color" syntax
+    if type(left) == "number" then
+        return right, left
+    end
+
+    -- "color + number" and "color + color" syntax
+    return left, right
+end
 
 --- Global cache for hex values of colors.
 ---
@@ -16,7 +26,7 @@ local COLOR_CACHE = {}
 ---@field components string[] The components of the gamut in the order they are specified.
 ---@field to_matrix fun(self: Color): Matrix Convert the color to a `<number of components> x 1` matrix.
 ---@overload fun(self: Color, ...: number): Color Create a new instance of the class.
----@field is fun(self: Color, type: Color): boolean Is the color the same type as the argument?
+---@field is fun(self: Color, type: Color|string): boolean Is the color the same type as the argument?
 ---@field get_type fun(self: Color): Color? Return the class of the color.
 ---@field get_common_ancestor fun(self: Color, type: Color): Color? Get the common ancestor, if it exists.
 ---@field get_parent_gamut fun(self: Color): Color? The parent color gamut
@@ -25,14 +35,20 @@ local COLOR_CACHE = {}
 ---@field to_parent fun(self: Color): Color? Convert the color to the parent type
 ---@field from_parent fun(self: Color, parent: Color): Color? Convert the parent type to this type
 ---@field to fun(self: Color, type: Color|string): Color? Convert the color to another gamut
+---@field _to fun(self: Color, type: Color): Color? Convert the color to another gamut, without caching logic
 ---@field _up fun(self: Color, type: Color): Color Convert the color to a gamut in the parent chain
 ---@field _down fun(self: Color, type: Color): Color Convert the color to a gamut that has this type as an ancestor
----@field hex fun(self: Color): string
+---@field _save_conversion_to_cache fun(self: Color, result: Color): nil Save a conversion to another gamut in the cache
+---@field _get_conversion_from_cache fun(self: Color, type: Color): Color? Get a cached conversion to another gamut, or nil if it doesn't exist
+---@field _get_or_save_conversion_to_cache fun(self: Color, destination_type: Color, convert: fun(): Color): Color Get a cached conversion to another gamut, or perform and save the conversion to the cache if it doesn't exist
+---@field serialize fun(self: Color): string Serialize the object to a string representation
+---@field deserialize fun(serialized_or_cls: Color|string, serialized: string?): Color Deserialize an object from a string representation
+---@field hex fun(self: Color): string Get the hex representation of the color
 
 ---@type Color
 local M = { ---@diagnostic disable-line: missing-fields
     is_color_object = true,
-    components = nil,
+    components = {},
 
     new = function(self, ...)
         local args = { ... }
@@ -62,12 +78,8 @@ local M = { ---@diagnostic disable-line: missing-fields
         return obj
     end,
 
-    __call = function(self, ...)
-        return self:new(...)
-    end,
-
     to_matrix = function(self)
-        local matrix = require('polychrome.matrix')
+        local matrix = require("polychrome.matrix")
 
         local rows = {}
         for _, key in ipairs(self.components) do
@@ -81,13 +93,23 @@ local M = { ---@diagnostic disable-line: missing-fields
         return nil
     end,
 
-    is = function(self, type)
-        return self.__type == type.__type
+    is = function(self, _type)
+        -- load class dynamically
+        if type(_type) == "string" then
+            local cls = require("polychrome.color")[_type]
+            if cls == nil or not cls.is_color_object then
+                error("No gamut found named '" .. _type .. "'.")
+            end
+
+            _type = cls
+        end
+
+        return self.__type == _type.__type
     end,
 
     get_type = function(self)
-        local color = require('polychrome.color')
-        for _, value in pairs({ color.hsl, color.rgb, color.lrgb, color.oklab, color.oklch, color.ciexyz }) do
+        local color = require("polychrome.color")
+        for _, value in pairs(color) do
             if self:is(value) then
                 return value
             end
@@ -148,16 +170,28 @@ local M = { ---@diagnostic disable-line: missing-fields
         return nil
     end,
 
+    -- perf: cache the hex conversion to avoid recalculating every time the color is used
     to = function(self, _type)
         -- allow passing the name of the gamut as a string
-        if type(_type) == 'string' then
-            local temp = require('polychrome')[_type]
-            if temp == nil or not temp.is_color_object then
+        if type(_type) == "string" then
+            local cls = require("polychrome.color")[_type]
+            if cls == nil or not cls.is_color_object then
                 error("No gamut found named '" .. _type .. "'.")
             end
-            _type = temp
+            _type = cls
         end
 
+        -- if we already have the right type, no-op
+        if self:is(_type) then
+            return self
+        end
+
+        return self:_get_or_save_conversion_to_cache(_type, function()
+            return self:_to(_type)
+        end)
+    end,
+
+    _to = function(self, _type)
         local common = self:get_common_ancestor(_type)
         if common == nil then
             error("Gamuts do not have common ancestors.")
@@ -170,11 +204,6 @@ local M = { ---@diagnostic disable-line: missing-fields
     end,
 
     _up = function(self, type)
-        -- if we already have the right type, no-op
-        if self:is(type) then
-            return self
-        end
-
         local path = self:parent_chain()
         local goal = utils.find(path, type, self.is)
 
@@ -185,18 +214,18 @@ local M = { ---@diagnostic disable-line: missing-fields
 
         local current = self
         for _ = 1, goal, 1 do
-            current = current:to_parent()
+            local next = current:to_parent()
+            if next == nil then
+                error("Got nil when converting " .. current.__type .. " into parent")
+            end
+
+            current = next
         end
 
         return current
     end,
 
     _down = function(self, type)
-        -- if we already have the right type, no-op
-        if self:is(type) then
-            return self
-        end
-
         -- going top-down, rather than bottom-up
         local path = type:_descent_chain()
 
@@ -208,15 +237,65 @@ local M = { ---@diagnostic disable-line: missing-fields
         -- iterate backwards through the path
         local current = self
         for _, t in ipairs(utils.slice(path, start, #path)) do
-            current = t:from_parent(current)
+            local next = t:from_parent(current)
+            if next == nil then
+                error("Got nil when converting " .. current.__type .. " into child")
+            end
+
+            current = next
         end
 
         return current
     end,
 
-    __eq = function(a, b)
-        for _, key in ipairs(a.components) do
-            if a[key] ~= b[key] then
+    repr = function(self)
+        local repr = self.__type .. "({ "
+
+        repr = repr
+            .. vim.iter(self.components)
+                :map(function(c)
+                    return c .. " = " .. self[c]
+                end)
+                :join(", ")
+
+        return repr .. " })"
+    end,
+
+    _per_channel_op = function(self, other, op)
+        local destination_type = self:get_type()
+
+        -- "color + 128" syntax
+        if type(other) == "number" then
+            other = destination_type:new(other, other, other)
+        end
+        local other_type = other:get_type()
+
+        local converted = self:clone():to(other_type)
+
+        local components = {}
+        for _, key in ipairs(converted.components) do
+            table.insert(components, op(converted[key], other[key]))
+        end
+
+        return other_type:new(components):to(destination_type)
+    end,
+
+    clone = function(self)
+        local values = {}
+        for _, key in ipairs(self.components) do
+            table.insert(values, self[key])
+        end
+
+        return self:get_type():new(values)
+    end,
+
+    __call = function(self, ...)
+        return self:new(...)
+    end,
+
+    __eq = function(self, other)
+        for _, key in ipairs(self.components) do
+            if self[key] ~= other[key] then
                 return false
             end
         end
@@ -224,15 +303,57 @@ local M = { ---@diagnostic disable-line: missing-fields
         return true
     end,
 
+    __unm = function(self)
+        local components = {}
+        for _, key in ipairs(self.components) do
+            table.insert(components, -self[key])
+        end
+
+        local new = self:get_type():new(components)
+        return new
+    end,
+
+    __add = function(left, right)
+        local self, other = ensure_left_arg_is_color(left, right)
+
+        return self:_per_channel_op(other, function(a, b)
+            return a + b
+        end)
+    end,
+
+    __sub = function(left, right)
+        local self, other = ensure_left_arg_is_color(left, right)
+
+        return self:_per_channel_op(other, function(a, b)
+            return a - b
+        end)
+    end,
+
+    __mul = function(left, right)
+        local self, other = ensure_left_arg_is_color(left, right)
+
+        return self:_per_channel_op(other, function(a, b)
+            return a * b
+        end)
+    end,
+
+    __div = function(left, right)
+        local self, other = ensure_left_arg_is_color(left, right)
+
+        return self:_per_channel_op(other, function(a, b)
+            return a / b
+        end)
+    end,
+
     interpolate_linear = function(a, b, percentage)
-        local start = a:to('oklab')
-        local finish = b:to('oklab')
+        local start = a:to("oklab")
+        local finish = b:to("oklab")
 
         local values = {}
         for _, key in ipairs(start.components) do
             values[key] = start[key] + ((finish[key] - start[key]) * percentage)
         end
-        local new = require('polychrome').oklab(values)
+        local new = require("polychrome").oklab(values)
 
         return new:to(getmetatable(a))
     end,
@@ -241,19 +362,77 @@ local M = { ---@diagnostic disable-line: missing-fields
         return self:hex()
     end,
 
-    -- perf: cache the hex conversion to avoid recalculating every time the color is used
-    hex = function(self)
+    serialize = function(self)
         local parts = { self.__type }
         for _, component in ipairs(self.components) do
             table.insert(parts, self[component])
         end
-        local key = table.concat(parts, ':')
 
-        if COLOR_CACHE[key] == nil then
-            COLOR_CACHE[key] = self:to('rgb'):hex()
+        return table.concat(parts, ":")
+    end,
+
+    deserialize = function(serialized_or_cls, serialized)
+        -- allow ".deserialize" or ':deserialize' syntax
+        if type(serialized_or_cls) == "string" then
+            serialized = serialized_or_cls
         end
 
-        return COLOR_CACHE[key]
+        local parts = vim.split(serialized, ":")
+        local _type = table.remove(parts, 1)
+
+        local type = require("polychrome.color")[_type]
+
+        if type == nil then
+            error("Type " .. _type .. " dows not exist!")
+        end
+
+        return type:new(parts)
+    end,
+
+    _save_conversion_to_cache = function(self, result)
+        local from = self:serialize()
+        local to = result:serialize()
+
+        -- cache from self to result
+        COLOR_CACHE[from] = COLOR_CACHE[from] or {}
+        COLOR_CACHE[from][result.__type] = to
+
+        -- cache from result to self
+        COLOR_CACHE[to] = COLOR_CACHE[to] or {}
+        COLOR_CACHE[to][self.__type] = from
+    end,
+
+    _get_conversion_from_cache = function(self, type)
+        local key = self:serialize()
+
+        if COLOR_CACHE[key] == nil then
+            return nil
+        end
+
+        local serialized = COLOR_CACHE[key][type.__type]
+        if serialized == nil then
+            return nil
+        end
+
+        return type:deserialize(serialized)
+    end,
+
+    _get_or_save_conversion_to_cache = function(self, destination_type, convert)
+        local cached = self:_get_conversion_from_cache(destination_type)
+        if cached ~= nil then
+            return cached
+        end
+
+        local converted = convert()
+        self:_save_conversion_to_cache(converted)
+
+        return converted
+    end,
+
+    hex = function(self)
+        return self:_get_or_save_conversion_to_cache(require("polychrome.color.rgb"), function()
+            return self:to("rgb")
+        end):hex()
     end,
 }
 M.__index = M

@@ -1,5 +1,5 @@
-local Color = require('polychrome.color.base')
-local matrices = require('polychrome.color.math.matrices')
+local Color = require("polychrome.color.base")
+local matrices = require("polychrome.color.math.matrices")
 
 ---@class CIEXYZ : Color
 ---@field __type 'ciexyz'
@@ -11,11 +11,11 @@ local matrices = require('polychrome.color.math.matrices')
 
 ---@type CIEXYZ
 local M = { ---@diagnostic disable-line: missing-fields
-    __type = 'ciexyz',
-    components = { 'X', 'Y', 'Z' },
+    __type = "ciexyz",
+    components = { "X", "Y", "Z" },
 
     get_parent_gamut = function()
-        return require('polychrome.color.lms')
+        return require("polychrome.color.lms")
     end,
 
     ---@param self CIEXYZ
@@ -32,6 +32,26 @@ local M = { ---@diagnostic disable-line: missing-fields
         local lms = matrices.XYZ_to_LMS:mul(self:to_matrix())
 
         return self:get_parent_gamut():new(lms:transpose()[1])
+    end,
+
+    __unm = function(self)
+        return Color.__unm(self)
+    end,
+
+    __add = function(self, other)
+        return Color.__add(self, other)
+    end,
+
+    __sub = function(self, other)
+        return Color.__sub(self, other)
+    end,
+
+    __mul = function(self, other)
+        return Color.__mul(self, other)
+    end,
+
+    __div = function(self, other)
+        return Color.__div(self, other)
     end,
 }
 M.__index = M

@@ -1,5 +1,5 @@
-local Color = require('polychrome.color.base')
-local utils = require('polychrome.utils')
+local Color = require("polychrome.color.base")
+local utils = require("polychrome.utils")
 
 ---@class Oklch : Color
 ---@field __type 'oklch'
@@ -11,11 +11,11 @@ local utils = require('polychrome.utils')
 
 ---@type Oklch
 local M = { ---@diagnostic disable-line: missing-fields
-    __type = 'oklch',
-    components = { 'L', 'c', 'h' },
+    __type = "oklch",
+    components = { "L", "c", "h" },
 
     get_parent_gamut = function()
-        return require('polychrome.color.oklab')
+        return require("polychrome.color.oklab")
     end,
 
     ---@param self Oklch
@@ -35,6 +35,26 @@ local M = { ---@diagnostic disable-line: missing-fields
             c = math.sqrt(math.pow(parent.a, 2) + math.pow(parent.b, 2)),
             h = utils.clamp(math.atan2(parent.b, parent.a) * 180 / math.pi, 0, 360),
         })
+    end,
+
+    __unm = function(self)
+        return Color.__unm(self)
+    end,
+
+    __add = function(self, other)
+        return Color.__add(self, other)
+    end,
+
+    __sub = function(self, other)
+        return Color.__sub(self, other)
+    end,
+
+    __mul = function(self, other)
+        return Color.__mul(self, other)
+    end,
+
+    __div = function(self, other)
+        return Color.__div(self, other)
     end,
 }
 M.__index = M

@@ -1,8 +1,8 @@
-local bit = require('bit')
+local bit = require("bit")
 
-local Color = require('polychrome.color.base')
-local utils = require('polychrome.utils')
-local gamma = require('polychrome.color.math.gamma')
+local Color = require("polychrome.color.base")
+local utils = require("polychrome.utils")
+local gamma = require("polychrome.color.math.gamma")
 
 ---@class RGB : Color
 ---@field __type 'rgb'
@@ -16,8 +16,8 @@ local gamma = require('polychrome.color.math.gamma')
 
 ---@type RGB
 local M = { ---@diagnostic disable-line: missing-fields
-    __type = 'rgb',
-    components = { 'r', 'g', 'b' },
+    __type = "rgb",
+    components = { "r", "g", "b" },
 
     new = function(self, ...)
         local obj = getmetatable(self).new(self, ...)
@@ -46,12 +46,12 @@ local M = { ---@diagnostic disable-line: missing-fields
     end,
 
     get_parent_gamut = function()
-        return require('polychrome.color.lrgb')
+        return require("polychrome.color.lrgb")
     end,
 
     ---@param self RGB
     to_parent = function(self)
-        local lRGB = require('polychrome.color.lrgb')
+        local lRGB = require("polychrome.color.lrgb")
         return lRGB:new({
             lr = gamma.gamma_to_linear(self.r / 255),
             lg = gamma.gamma_to_linear(self.g / 255),
@@ -67,6 +67,26 @@ local M = { ---@diagnostic disable-line: missing-fields
             g = utils.round(utils.clamp(gamma.linear_to_gamma(parent.lg) * 255)),
             b = utils.round(utils.clamp(gamma.linear_to_gamma(parent.lb) * 255)),
         })
+    end,
+
+    __unm = function(self)
+        return Color.__unm(self)
+    end,
+
+    __add = function(self, other)
+        return Color.__add(self, other)
+    end,
+
+    __sub = function(self, other)
+        return Color.__sub(self, other)
+    end,
+
+    __mul = function(self, other)
+        return Color.__mul(self, other)
+    end,
+
+    __div = function(self, other)
+        return Color.__div(self, other)
     end,
 }
 M.__index = M

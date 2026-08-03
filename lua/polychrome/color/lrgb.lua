@@ -1,5 +1,5 @@
-local Color = require('polychrome.color.base')
-local matrices = require('polychrome.color.math.matrices')
+local Color = require("polychrome.color.base")
+local matrices = require("polychrome.color.math.matrices")
 
 ---@class lRGB : Color
 ---@field __type 'lrgb'
@@ -14,11 +14,11 @@ local matrices = require('polychrome.color.math.matrices')
 
 ---@type lRGB
 local M = { ---@diagnostic disable-line: missing-fields
-    __type = 'lrgb',
-    components = { 'lr', 'lg', 'lb' },
+    __type = "lrgb",
+    components = { "lr", "lg", "lb" },
 
     get_parent_gamut = function()
-        return require('polychrome.color.lms')
+        return require("polychrome.color.lms")
     end,
 
     ---@param self lRGB
@@ -33,7 +33,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     from_parent = function(self, parent)
         local naive = self:_from_lms_naive(parent)
 
-        return require('polychrome.color.math.clip').gamut_clip_preserve_chroma(naive)
+        return require("polychrome.color.math.clip").gamut_clip_preserve_chroma(naive)
     end,
 
     _from_lms_naive = function(self, parent)
@@ -41,9 +41,28 @@ local M = { ---@diagnostic disable-line: missing-fields
 
         return self:new(lrgb)
     end,
+
+    __unm = function(self)
+        return Color.__unm(self)
+    end,
+
+    __add = function(self, other)
+        return Color.__add(self, other)
+    end,
+
+    __sub = function(self, other)
+        return Color.__sub(self, other)
+    end,
+
+    __mul = function(self, other)
+        return Color.__mul(self, other)
+    end,
+
+    __div = function(self, other)
+        return Color.__div(self, other)
+    end,
 }
 M.__index = M
 setmetatable(M, Color)
-
 
 return M

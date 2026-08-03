@@ -1,6 +1,6 @@
-local Color = require('polychrome.color.base')
-local utils = require('polychrome.utils')
-local matrices = require('polychrome.color.math.matrices')
+local Color = require("polychrome.color.base")
+local utils = require("polychrome.utils")
+local matrices = require("polychrome.color.math.matrices")
 
 ---@class Oklab : Color
 ---@field __type 'oklab'
@@ -12,11 +12,11 @@ local matrices = require('polychrome.color.math.matrices')
 
 ---@type Oklab
 local M = { ---@diagnostic disable-line: missing-fields
-    __type = 'oklab',
-    components = { 'L', 'a', 'b' },
+    __type = "oklab",
+    components = { "L", "a", "b" },
 
     get_parent_gamut = function()
-        return require('polychrome.color.lms')
+        return require("polychrome.color.lms")
     end,
 
     ---@param self Oklab
@@ -25,7 +25,10 @@ local M = { ---@diagnostic disable-line: missing-fields
         local _lms = matrices.Oklab_to_LMS:mul(self:to_matrix())
 
         -- cube each individual value
-        local lms = _lms:replace(function(e) return e ^ 3 end):transpose()[1]
+        local lms = _lms:replace(function(e)
+            return e ^ 3
+        end)
+            :transpose()[1]
 
         return self:get_parent_gamut():new(lms)
     end,
@@ -40,6 +43,26 @@ local M = { ---@diagnostic disable-line: missing-fields
         local lab = matrices.LMS_to_Oklab:mul(_lms):transpose()[1]
 
         return self:new(lab)
+    end,
+
+    __unm = function(self)
+        return Color.__unm(self)
+    end,
+
+    __add = function(self, other)
+        return Color.__add(self, other)
+    end,
+
+    __sub = function(self, other)
+        return Color.__sub(self, other)
+    end,
+
+    __mul = function(self, other)
+        return Color.__mul(self, other)
+    end,
+
+    __div = function(self, other)
+        return Color.__div(self, other)
     end,
 }
 M.__index = M

@@ -1,5 +1,5 @@
-local Color = require('polychrome.color.base')
-local utils = require('polychrome.utils')
+local Color = require("polychrome.color.base")
+local utils = require("polychrome.utils")
 
 ---@class HSL : Color
 ---@field __type 'hsl'
@@ -12,18 +12,22 @@ local utils = require('polychrome.utils')
 
 ---@type HSL
 local M = { ---@diagnostic disable-line: missing-fields
-    __type = 'hsl',
-    components = { 'h', 's', 'l' },
+    __type = "hsl",
+    components = { "h", "s", "l" },
 
     hue_to_RGB_value = function(p, q, t)
-        if (t < 0) then t = t + 1 end
-        if (t > 1) then t = t - 1 end
+        if t < 0 then
+            t = t + 1
+        end
+        if t > 1 then
+            t = t - 1
+        end
 
-        if (t < 1 / 6) then
+        if t < 1 / 6 then
             return p + (q - p) * 6 * t
-        elseif (t < 1 / 2) then
+        elseif t < 1 / 2 then
             return q
-        elseif (t < 2 / 3) then
+        elseif t < 2 / 3 then
             return p + (q - p) * (2 / 3 - t) * 6
         end
 
@@ -31,7 +35,7 @@ local M = { ---@diagnostic disable-line: missing-fields
     end,
 
     get_parent_gamut = function()
-        return require('polychrome.color.rgb')
+        return require("polychrome.color.rgb")
     end,
 
     ---@param self HSL
@@ -44,19 +48,19 @@ local M = { ---@diagnostic disable-line: missing-fields
         local l = self.l / 100
 
         -- achromatic
-        if (self.s == 0) then
+        if self.s == 0 then
             r = l
             g = l
             b = l
         else
             local q
-            if (l < 0.5) then
+            if l < 0.5 then
                 q = l * (1 + s)
             else
                 q = l + s - l * s
             end
 
-            local p = 2 * l - q;
+            local p = 2 * l - q
 
             r = self.hue_to_RGB_value(p, q, h + 1 / 3)
             g = self.hue_to_RGB_value(p, q, h)
@@ -86,28 +90,28 @@ local M = { ---@diagnostic disable-line: missing-fields
         -- calculate hue
         local h = 0
 
-        if (delta == 0) then
-            h = 0;
-        elseif (cmax == r) then
+        if delta == 0 then
+            h = 0
+        elseif cmax == r then
             h = ((g - b) / delta) % 6
-        elseif (cmax == g) then
+        elseif cmax == g then
             h = (b - r) / delta + 2
         else
             h = (r - g) / delta + 4
         end
 
-        h = utils.round(h * 60);
+        h = utils.round(h * 60)
         -- Make negative hues positive behind 360°
-        if (h < 0) then
-            h = h + 360;
+        if h < 0 then
+            h = h + 360
         end
 
         -- Calculate lightness
-        local l = (cmax + cmin) / 2;
+        local l = (cmax + cmin) / 2
 
         -- Calculate saturation
         local s = 0
-        if (delta ~= 0) then
+        if delta ~= 0 then
             s = delta / (1 - math.abs(2 * l - 1))
         end
 
@@ -116,6 +120,26 @@ local M = { ---@diagnostic disable-line: missing-fields
         l = math.abs(l * 100)
 
         return self:new(h, s, l)
+    end,
+
+    __unm = function(self)
+        return Color.__unm(self)
+    end,
+
+    __add = function(self, other)
+        return Color.__add(self, other)
+    end,
+
+    __sub = function(self, other)
+        return Color.__sub(self, other)
+    end,
+
+    __mul = function(self, other)
+        return Color.__mul(self, other)
+    end,
+
+    __div = function(self, other)
+        return Color.__div(self, other)
     end,
 }
 M.__index = M

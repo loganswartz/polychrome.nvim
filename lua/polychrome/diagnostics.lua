@@ -128,7 +128,7 @@ end
 
 local function ts_find_table_string_value(value)
     local success, tree = pcall(vim.treesitter.get_parser, 0)
-    if not success then
+    if not success or tree == nil then
         return {}
     end
 

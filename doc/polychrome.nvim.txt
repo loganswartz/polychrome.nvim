@@ -99,7 +99,340 @@ This can be accomplished by creating a file in `colors/` named
 This should be all that's needed to make your colorscheme loadable.
 
 ==============================================================================
-4. Highlight Groups          *polychrome-groups* *polychrome-highlight-groups*
+4. Supported Colorspaces                              *polychrome-colorspaces*
+
+Currently, `polychrome.nvim` supports the following colorspaces:
+
+    * sRGB (the `rgb` helper)
+    * sRGB hex string (Neovim natively supports; just pass as a normal string)
+    * Linear (non-gamma-corrected) RGB (`lrgb`)
+    * HSL (`hsl`)
+    * Oklab (`oklab`)
+    * Oklch (`oklch`)
+    * CIEXYZ (`ciexyz`)
+    * LMS (`lms`)
+
+Many of these color spaces can encode values outside of the sRGB color space,
+but Neovim (and terminals in general) currently only support sRGB. For our
+purposes, Neovim only accepts sRGB hex strings, so we must have a way to
+convert any colors to an sRGB hex string.
+
+It should be noted that if you specify a color that falls outside the sRGB
+colorspace, `polychrome.nvim` won't magically allow you to display that color
+completely accurately. The end result will be the closest displayable color in
+the sRGB colorspace. See `Chroma Clipping` at the end of this section for more
+info.
+
+For each supported colorspace, `polychrome.nvim` provides a helper that will
+handle automatically converting a given color to sRGB, and allow specifying
+colors in a more ergonomic way. The helpers are automatically injected into
+the colorscheme definition context, so you don't need to `require` them if you
+don't want to (although you can anyway for clarity).
+
+Below are some examples of how to specify `#ff0000` in each colorspace, using
+the provided helpers:
+
+                                                 *polychrome-colorspaces-rgb*
+sRGB ~
+
+sRGB, also known as gamma-corrected RGB, has red, green, and blue components
+that range from 0 to 255. The values have gamma-correction baked in, which
+solves some problems, and creates some others. This is the colorspace most
+people are thinking of when they think "RGB".
+
+>lua
+    -- Neovim natively supports hex strings, so no helper is needed
+    local red = '#ff0000'
+
+    -- there is also a helper available, if you want to use integers:
+    local rgb = require('polychrome.color.rgb')
+
+    local red = rgb(255, 0, 0)
+    -- or
+    local red = rgb({ 255, 0, 0 })
+    -- or
+    local red = rgb({ r = 255, g = 0, b = 0 })
+<
+
+                                                *polychrome-colorspaces-lrgb*
+lRGB ~
+
+Linear RGB, also known as non-gamma-corrected RGB, is similar to sRGB.
+sRGB has red, green, and blue components that are in the range 0-255, but
+linear RGB values are decimals in the range 0.0 - 1.0, and additionally has no
+gamma correction. The lack of gamma correction makes conversion to other
+colorspaces much simpler.
+
+>lua
+    local lrgb = require('polychrome.color.lrgb')
+
+    local red = lrgb(1, 0, 0)
+    -- or
+    local red = lrgb({ 1, 0, 0 })
+    -- or
+    local red = lrgb({ lr = 1, lg = 0, lb = 0 })
+<
+
+                                                 *polychrome-colorspaces-hsl*
+HSL ~
+
+Many people are also familiar with HSL, especially if they work in web
+development or use CSS. HSL provides a slightly more intuitive way to specify
+colors, but modern colorspaces like `Oklch` do the same with much higher
+perceptual accuracy.
+
+>lua
+    local hsl = require('polychrome.color.hsl')
+
+    local red = hsl(0, 100, 50)
+    -- or
+    local red = hsl({ 0, 100, 50 })
+    -- or
+    local red = hsl({ h = 0, s = 100, l = 50 })
+<
+
+                                               *polychrome-colorspaces-oklab*
+Oklab ~
+
+Oklab is a relatively new colorspace that was created to provide high
+perceptual accuracy. It's essentially a tweaked version of the existing
+"CIELAB" colorspace.
+
+>lua
+    local oklab = require('polychrome.color.oklab')
+
+    local red = oklab(0.62795, 0.22486, 0.12584)
+    -- or
+    local red = oklab({ 0.62795, 0.22486, 0.12584 })
+    -- or
+    local red = oklab({ L = 0.62795, a = 0.22486, b = 0.12584 })
+<
+
+                                               *polychrome-colorspaces-oklch*
+Oklch ~
+
+In the same way that HSL provides a human-intuitive way of specifying RGB
+colors, Oklch accomplishes the same with Oklab. If you go about blindly
+tweaking values of a color specified in Oklch, the resulting color will
+usually be closer to what you expected than what it would be if you did the
+same in raw sRGB or HSL.
+
+>lua
+    local oklch = require('polychrome.color.oklch')
+
+    local red = oklch(0.62795, 0.25768, 29.23387)
+    -- or
+    local red = oklch({ 0.62795, 0.25768, 29.23387 })
+    -- or
+    local red = oklch({ L = 0.62795, c = 0.25768, h = 29.23387 })
+<
+
+                                                 *polychrome-colorspaces-cie*
+CIE XYZ ~
+
+The CIE XYZ colorspace is meant to encompass "all color sensations that are
+visible to a person with average eyesight". The actual values are not
+intuitive to the average person, but support for this means that any
+human-visible color can be represented. You probably don't want to specify
+colors in this colorspace directly.
+
+>lua
+    local ciexyz = require('polychrome.color.ciexyz')
+
+    local red = ciexyz(0.25456, 0.34053, 0.10514)
+    -- or
+    local red = ciexyz({ 0.25456, 0.34053, 0.10514 })
+    -- or
+    local red = ciexyz({ X = 0.25456, Y = 0.34053, Z = 0.10514 })
+<
+
+                                                 *polychrome-colorspaces-lms*
+LMS ~
+
+The LMS colorspace is meant to model the actual response of the cones in the
+retina. The pros and cons of LMS are very similar to CIE XYZ. You probably
+don't want to specify colors in this colorspace directly.
+
+>lua
+    local lms = require('polychrome.color.lms')
+
+    local red = lms(0.41222, 0.21190, 0.08830)
+    -- or
+    local red = lms({ 0.41222, 0.21190, 0.08830 })
+    -- or
+    local red = lms({ L = 0.41222, M = 0.21190, S = 0.08830 })
+<
+
+                                         *polychrome-colorspaces-unsupported*
+Currently Unsupported ~
+
+There are countless numbers of other colorspaces that aren't currently
+supported, and many of them never will be. However, there are a few
+colorspaces that will hopefully be supported in the future:
+
+    * `P3`
+    * `CIELAB`
+    * `CIELch`
+    * `Okhsl`
+    * `Okhsv`
+    * `HSV`
+
+==============================================================================
+5. Color math			     *polychrome-color-math* *polychrome-math*
+
+You can easily do math on all the color objects available in polychrome.
+
+Generally, doing math on two absolute values (AKA, "real" colors) isn't very
+useful. For example, what would be the utility of subtracting a "seafoam
+green" from a "coral red"? However, for operations where the left value is an
+absolute value and the right value is an offset (examples below), these
+operations allow for a lot of powerful and simple color adjustments.
+
+
+                                                *polychrome-number-operations*
+Number operations ~
+
+Performing a mathematical operation with a raw `number` value to a color will
+perform that operation on each of the color components/channels:
+
+>lua
+    local black = rgb(0, 0, 0)
+    -- add 128 to each channel
+    local gray = black + 128
+
+    print(gray:repr()) -- rgb({ r = 128, g = 128, b = 128 })
+<
+                                                 *polychrome-color-operations*
+Color operations ~
+
+Performing an operation with 2 color objects will instead perform that
+operation for each of the components/channels of the 2 colors:
+
+>lua
+    local black = rgb(0, 0, 0)
+    -- add 128 in the red channel only
+    local red = black + rgb(128, 0, 0)
+
+    print(red:repr()) -- rgb({ r = 128, g = 0, b = 0 })
+<
+
+While colorspaces often have explicit upper and/or lower bounds for their
+color channels (for example, `rgb(-128, 0, 0)` is not a valid color),
+polychrome's color objects avoid setting explicit limits. This lets you
+(ab)use the color objects and use them as offsets instead of absolute values:
+
+>lua
+    local gray = rgb(128, 128, 128)
+    -- subtract 128 to red and add 128 to green
+    local new = black + rgb(-128, 128, 0)
+
+    print(new:repr()) -- rgb({ r = 0 g = 255, b = 128 })
+<
+
+                                      *polychrome-cross-colorspace-operations*
+Cross-colorspace operations ~
+
+If the two colors in the operation belong to different colorspaces, the result
+will be returned in the colorspace of the left value. However, to actually
+perform the operation, polychrome will first convert the left value to the
+colorspace of the right value, proceed with the operation, and then convert
+the result back to the colorspace of the original left value.
+
+This might seem slightly unintuitive at first as it feels like a lot of
+unnecessary juggling of values, but doing things this way generally leads to
+more useful results. Consider this example:
+
+>lua
+    local red = rgb(255, 0, 0)
+    local offset = oklch(0, 0.1, 0)
+
+    -- remove some of the chroma
+    local coral = red - offset
+<
+
+Intuitively, this seems like it should work. Just remove some of the chroma
+from `red`, which should give us more of a light-red/"coral" color. Here's
+what happens internally when we convert the right value to the colorspace of
+the left value:
+
+>lua
+    -- convert left to right
+    -- (current behavior)
+
+    local original_left_type = left:get_type()
+    local _left = left:to(right:get_type())
+    local _right = right
+
+    -- _left = oklch(0.628, 0.2577, 29.23)
+    -- _right = oklch(0, 0.1, 0)
+
+    -- same types, no conversion
+    local manipulated = _left - _right
+    -- local = oklch(0.628, 0.1577, 29.23)
+
+    local result = manipulated:to(original_left_type)
+    -- result = rgb(215, 92, 77)
+<
+
+Compare this to the alternative where we might convert the right value to the
+colorspace of the left value before performing the operation:
+
+>lua
+    -- convert right to left
+
+    local _left = left
+    local _right = right:to(left:get_type())
+
+    -- _left = rgb(255, 0, 0)
+    -- _right = rgb(0, 0, 0)
+
+    -- same types, no conversion
+    local result = _left - _right
+    -- result = rgb(255, 0, 0)
+<
+
+A consequence of this is that when doing math with 2 color objects, the
+operation is not commutative. In other words, `left + right` is different than
+`right + left`, `left - right` is different than `-right + left`, etc.
+
+If you need to perform an operation like `left - right`, in the left side
+colorspace instead of the right, I would recommend instead just explicitly
+casting both values to the target colorspace, since any operations in the same
+colorspace do not perform any conversion logic:
+
+>lua
+    local result = red:to('rgb') - offset:to('rgb')
+    -- result = rgb({ r = 255, g = 0, b = 0 })
+<
+
+You can also do this dynamically if you don't know the other colorspace ahead
+of time:
+
+>lua
+    local result = red - offset:to(red:get_type())
+    -- result = rgb({ r = 255, g = 0, b = 0 })
+<
+
+                                                 *polychrome-chroma-clipping*
+Chroma clipping ~
+
+For developer convenience, all of polychrome's color objects allow manually
+setting arbitrary color channel values that may not result in valid colors
+(see |polychrome-color-math| for more info). However, this privilege does not
+extend to conversion between colorspaces, since the math will likely break
+down if values outside of the valid range for the colorspace are specified.
+For this reason, colors converted from one colorspace to another will be
+automatically and intelligently clipped / cast down into a valid range when
+necessary.
+
+When converting from a larger gamut down into sRGB, chroma clipping is
+performed using code adapted from Björn Ottosson's methods described
+[here](https://bottosson.github.io/posts/gamutclipping/#source-code). The
+clipping is performed in the Oklab colorspace, which should result in a very
+accurate translation.
+
+==============================================================================
+6. Highlight Groups          *polychrome-groups* *polychrome-highlight-groups*
 
 A highlight group definition usually looks something like this:
 
@@ -209,7 +542,7 @@ highlight group has a forbidden symbol in it, just wrap it in quotes and
 prefix it with `_` to get it working.
 
 ==============================================================================
-5. Highlight Attributes                                *polychrome-attributes*
+7. Highlight Attributes                                *polychrome-attributes*
 
 You can specify one or more attributes for any given highlight group, and in
 most instances, the attributes that `polychrome.nvim` accepts is a superset of
@@ -339,7 +672,7 @@ for `nvim_set_hl`.
 	      added if desired.
 
 ==============================================================================
-6. Links                                                    *polychrome-links*
+8. Links                                                    *polychrome-links*
 
 The native `link` attribute for highlight groups is not supported, because
 `polychrome.nvim` provides a more powerful version of links in its place. To
@@ -413,7 +746,7 @@ have already been defined:
 <
 
 ==============================================================================
-7. Advanced Usage                                  *polychrome-advanced-usage*
+9. Advanced Usage                                  *polychrome-advanced-usage*
 
 For certain more complex scenarios, there are a few handy tricks that can make
 your colorscheme definition a lot cleaner.
@@ -552,7 +885,7 @@ well-behaving plugin, so long as you set up the theme integration properly.
 In order for a plugin to be "well-behaving", it needs to a) support specifying
 an existing highlight group as the highlight, and b) properly reload its
 highlights when `ColorSchemePre` / `ColorScheme` events fire. If it meets
-these conditions, it should be able to get it to work with the live preview.
+these conditions, it should work with live preview.
 
 When creating the integration, you need to make sure to define any highlights
 for the plugin in your theme spec, and then refer to those in the actual
@@ -593,8 +926,8 @@ integration itself. Here's an example `lualine.nvim` integration:
 <
 
 With your integration set up like this, live preview should work automatically
-On the other hand, something like would have the same appearance, but would
-not work with live preview:
+On the other hand, something like this would have the same appearance, but
+would not work with live preview:
 
 >lua
     -- lua/lualine/themes/your_theme.lua
@@ -616,181 +949,7 @@ not work with live preview:
 <
 
 ==============================================================================
-8. Supported Colorspaces                              *polychrome-colorspaces*
-
-Currently, `polychrome.nvim` supports the following colorspaces:
-
-    * sRGB (the `rgb` helper)
-    * sRGB hex string (Neovim natively supports; just pass as a normal string)
-    * Linear (non-gamma-corrected) RGB (`lrgb`)
-    * HSL (`hsl`)
-    * Oklab (`oklab`)
-    * Oklch (`oklch`)
-    * CIEXYZ (`ciexyz`)
-    * LMS (`lms`)
-
-Many of these color spaces can encode values outside of the sRGB color space,
-but Neovim (and terminals in general) currently only support sRGB. For our
-purposes, Neovim only accepts sRGB hex strings, so we must have a way to
-convert any colors to an sRGB hex string.
-
-It should be noted that if you specify a color that falls outside the sRGB
-colorspace, `polychrome.nvim` won't magically allow you to display that color
-completely accurately. The end result will be the closest displayable color in
-the sRGB colorspace. See `Chroma Clipping` at the end of this section for more
-info.
-
-For each supported colorspace, `polychrome.nvim` provides a helper that will
-handle automatically converting a given color to sRGB, and allow specifying
-colors in a more ergonomic way. The helpers are automatically injected into
-the colorscheme definition context, so you don't need to `require` them if you
-don't want to (although you can anyway for clarity).
-
-Below are some examples of how to specify `#ff0000` in each colorspace, using
-the provided helpers:
-
-                                                 *polychrome-colorspaces-rgb*
-sRGB ~
-
-sRGB, also known as gamma-corrected RGB, has red, green, and blue components
-that range from 0 to 255. The values have gamma-correction baked in, which
-solves some problems, and creates some others. This is the colorspace most
-people are thinking of when they think "RGB".
-
->lua
-    -- Neovim natively supports hex strings, so no helper is needed
-    local red = '#ff0000'
-
-    -- there is also a helper available, if you want to use integers:
-    local rgb = require('polychrome').rgb
-
-    -- alternative forms include:
-    local red = rgb(255, 0, 0)
-    local red = rgb({ r = 255, g = 0, b = 0 })
-<
-
-                                                *polychrome-colorspaces-lrgb*
-lRGB ~
-
-Linear RGB, also known as non-gamma-corrected RGB, is similar to sRGB.
-sRGB has red, green, and blue components that are in the range 0-255, but
-linear RGB values are decimals in the range 0.0 - 1.0, and additionally has no
-gamma correction. The lack of gamma correction makes conversion to other
-colorspaces much simpler.
-
->lua
-    local lrgb = require('polychrome').lrgb
-
-    local red = lrgb(1, 0, 0)
-    -- or
-    local red = lrgb({ lr = 1, lg = 0, lb = 0 })
-<
-
-                                                 *polychrome-colorspaces-hsl*
-HSL ~
-
-Many people are also familiar with HSL, especially if they work in web
-development or use CSS. HSL provides a slightly more intuitive way to specify
-colors, but modern colorspaces like `Oklch` do the same with much higher
-perceptual accuracy.
-
->lua
-    local hsl = require('polychrome').hsl
-
-    local red = hsl(0, 100, 50)
-    -- or
-    local red = hsl({ h = 0, s = 100, l = 50 })
-<
-
-                                               *polychrome-colorspaces-oklab*
-Oklab ~
-
-Oklab is a relatively new colorspace that was created to provide high
-perceptual accuracy. It's essentially a tweaked version of the existing
-"CIELAB" colorspace.
-
->lua
-    local oklab = require('polychrome').oklab
-
-    local red = oklab(0.62795, 0.22486, 0.12584)
-    -- or
-    local red = oklab({ L = 0.62795, a = 0.22486, b = 0.12584 })
-<
-
-                                               *polychrome-colorspaces-oklch*
-Oklch ~
-
-In the same way that HSL provides a human-intuitive way of specifying RGB
-colors, Oklch accomplishes the same with Oklab. If you go about blindly
-tweaking values of a color specified in Oklch, the resulting color will
-usually be closer to what you expected than what it would be if you did the
-same in raw sRGB or HSL.
-
->lua
-    local oklch = require('polychrome').oklch
-
-    local red = oklch(0.62795, 0.25768, 29.23387)
-    -- or
-    local red = oklch({ L = 0.62795, c = 0.25768, h = 29.23387 })
-<
-
-                                                 *polychrome-colorspaces-cie*
-CIE XYZ ~
-
-The CIE XYZ colorspace is meant to encompass "all color sensations that are
-visible to a person with average eyesight". The actual values are not
-intuitive to the average person, but support for this means that any
-human-visible color can be represented. You probably don't want to specify
-colors in this colorspace directly.
-
->lua
-    local ciexyz = require('polychrome').ciexyz
-
-    local red = ciexyz(0.25456, 0.34053, 0.10514)
-    -- or
-    local red = ciexyz({ X = 0.25456, Y = 0.34053, Z = 0.10514 })
-<
-
-                                                 *polychrome-colorspaces-lms*
-LMS ~
-
-The LMS colorspace is meant to model the actual response of the cones in the
-retina. The pros and cons of LMS are very similar to CIE XYZ. You probably
-don't want to specify colors in this colorspace directly.
-
->lua
-    local lms = require('polychrome').lms
-
-    local red = lms(0.41222, 0.21190, 0.08830)
-    -- or
-    local red = lms({ L = 0.41222, M = 0.21190, S = 0.08830 })
-<
-
-                                         *polychrome-colorspaces-unsupported*
-Currently Unsupported ~
-
-There are countless numbers of other colorspaces that aren't currently
-supported, and many of them never will be. However, there are a few
-colorspaces that will hopefully be supported in the future:
-
-    * `P3`
-    * `CIELAB`
-    * `CIELch`
-    * `Okhsl`
-    * `Okhsv`
-    * `HSV`
-
-                                                 *polychrome-chroma-clipping*
-Chroma clipping ~
-
-When converting from a larger gamut down into sRGB, chroma clipping is
-performed using code adapted from Björn Ottosson's methods described
-[here](https://bottosson.github.io/posts/gamutclipping/#source-code). The
-clipping is performed in the Oklab colorspace, which should result in a very
-accurate translation.
-
-==============================================================================
-9. Live preview mode                                 *polychrome-live-preview*
+10. Live preview mode                                *polychrome-live-preview*
 
 `polychrome.nvim` includes a live preview mode that vastly streamlines the
 process of creating a colorscheme. To start the live preview mode, run
@@ -827,10 +986,10 @@ preview mode, check out |polychrome-third-party-plugin-live-preview| to make
 sure you have your integrations set up properly.
 
 ==============================================================================
-10. Commands                               *:Polychrome* *polychrome-commands*
+11. Commands                               *:Polychrome* *polychrome-commands*
 
 A few user commands are automatically registered in order to make colorscheme
-creation easier. 
+creation easier.
 
                              *:Polychrome_preview* *:Polychrome_preview_start*
 :Polychrome preview [start] ~
