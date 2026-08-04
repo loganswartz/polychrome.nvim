@@ -6,63 +6,59 @@ local matrices = require("polychrome.color.math.matrices")
 ---@field lr number The red value of the color [0-1]
 ---@field lg number The green value of the color [0-1]
 ---@field lb number The blue value of the color [0-1]
----@field new fun(self: lRGB, ...: table|number): lRGB Create a new instance of the class.
----@overload fun(self: lRGB, ...: table|number): lRGB Create a new instance of the class.
----@field _from_lms_naive fun(self: lRGB, parent: LMS): lRGB Naively convert from Oklab to lRGB
----@field to_parent fun(self: lRGB): LMS
----@field get_parent_gamut fun(): LMS
-
----@type lRGB
-local M = { ---@diagnostic disable-line: missing-fields
+local lRGB = {
     __type = "lrgb",
     components = { "lr", "lg", "lb" },
-
-    get_parent_gamut = function()
-        return require("polychrome.color.lms")
-    end,
-
-    ---@param self lRGB
-    to_parent = function(self)
-        local lms = matrices.lRGB_to_LMS:mul(self:to_matrix())
-
-        return self.get_parent_gamut():new(lms:transpose()[1])
-    end,
-
-    ---@param self lRGB
-    ---@param parent LMS
-    from_parent = function(self, parent)
-        local naive = self:_from_lms_naive(parent)
-
-        return require("polychrome.color.math.clip").gamut_clip_preserve_chroma(naive)
-    end,
-
-    _from_lms_naive = function(self, parent)
-        local lrgb = matrices.LMS_to_lRGB:mul(parent:to_matrix()):transpose()[1]
-
-        return self:new(lrgb)
-    end,
-
-    __unm = function(self)
-        return Color.__unm(self)
-    end,
-
-    __add = function(self, other)
-        return Color.__add(self, other)
-    end,
-
-    __sub = function(self, other)
-        return Color.__sub(self, other)
-    end,
-
-    __mul = function(self, other)
-        return Color.__mul(self, other)
-    end,
-
-    __div = function(self, other)
-        return Color.__div(self, other)
-    end,
 }
-M.__index = M
-setmetatable(M, Color)
+lRGB.__index = lRGB
+setmetatable(lRGB, Color)
 
-return M
+---@return LMS
+function lRGB.get_parent_gamut()
+    return require("polychrome.color.lms")
+end
+
+---@return LMS
+function lRGB:to_parent()
+    local lms = matrices.lRGB_to_LMS:mul(self:to_matrix())
+
+    return self.get_parent_gamut():new(lms:transpose()[1])
+end
+
+---@param parent LMS
+function lRGB.from_parent(self, parent)
+    local naive = self:_from_lms_naive(parent)
+
+    return require("polychrome.color.math.clip").gamut_clip_preserve_chroma(naive)
+end
+
+---Naively convert from Oklab to lRGB
+---@param parent LMS
+---@return lRGB
+function lRGB._from_lms_naive(self, parent)
+    local lrgb = matrices.LMS_to_lRGB:mul(parent:to_matrix()):transpose()[1]
+
+    return self:new(lrgb)
+end
+
+function lRGB.__unm(self)
+    return Color.__unm(self)
+end
+
+function lRGB.__add(self, other)
+    return Color.__add(self, other)
+end
+
+function lRGB.__sub(self, other)
+    return Color.__sub(self, other)
+end
+
+function lRGB.__mul(self, other)
+    return Color.__mul(self, other)
+end
+
+function lRGB.__div(self, other)
+    return Color.__div(self, other)
+end
+
+return lRGB
