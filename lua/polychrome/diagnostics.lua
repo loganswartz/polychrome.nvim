@@ -19,97 +19,104 @@ local M = {}
 ---
 ---@class DiagnosticManager
 ---@field _diagnostics vim.Diagnostic[]
----@field _diagnostics_are_equivalent fun(a: vim.Diagnostic, b: vim.Diagnostic): boolean
----@field add fun(self: DiagnosticManager, diagnostics: vim.Diagnostic[])
----@field remove fun(self: DiagnosticManager, diagnostics: vim.Diagnostic[])
----@field clear fun(self: DiagnosticManager)
----@field apply fun(self: DiagnosticManager)
----@field get fun(self: DiagnosticManager): vim.Diagnostic[]
-local DiagnosticManager = {
-    new = function(self)
-        local obj = {}
-        obj._diagnostics = {}
-
-        setmetatable(obj, self)
-
-        return obj
-    end,
-
-    _diagnostics_are_equivalent = function(a, b)
-        for key, value in pairs(a) do
-            if value ~= b[key] then
-                return false
-            end
-        end
-
-        return true
-    end,
-
-    has = function(self, diagnostic)
-        for _, existing in ipairs(self._diagnostics) do
-            if self._diagnostics_are_equivalent(diagnostic, existing) then
-                return true
-            end
-        end
-
-        return false
-    end,
-
-    add = function(self, diagnostics)
-        for _, diagnostic in ipairs(diagnostics) do
-            if not self:has(diagnostic) then
-                table.insert(self._diagnostics, diagnostic)
-            end
-        end
-
-        self:apply()
-    end,
-
-    remove = function(self, diagnostics)
-        local to_keep = {}
-
-        for _, diagnostic in ipairs(diagnostics) do
-            for _, existing in ipairs(self._diagnostics) do
-                if not self._diagnostics_are_equivalent(diagnostic, existing) then
-                    table.insert(to_keep, existing)
-                end
-            end
-        end
-
-        self._diagnostics = to_keep
-        self:apply()
-    end,
-
-    clear = function(self)
-        self._diagnostics = {}
-        self:apply()
-    end,
-
-    apply = vim.schedule_wrap(function(self, colorscheme)
-        local diagnostics = self:get()
-
-        if POLYCHROME_EDITING then
-            vim.api.nvim_buf_clear_namespace(0, M.DIAGNOSTIC_NAMESPACE, 0, -1)
-            vim.diagnostic.set(M.DIAGNOSTIC_NAMESPACE, 0, diagnostics)
-        else
-            for _, diagnostic in ipairs(diagnostics) do
-                vim.notify('[' .. (colorscheme and colorscheme.name or 'polychrome') .. '] ' .. diagnostic.message,
-                    vim.log.levels.ERROR)
-            end
-        end
-    end),
-
-    get = function(self)
-        return self._diagnostics
-    end,
-
-    __len = function(self)
-        return #self:get()
-    end,
-}
+local DiagnosticManager = {}
 DiagnosticManager.__index = DiagnosticManager
 
-M.DIAGNOSTIC_NAMESPACE = vim.api.nvim_create_namespace('polychrome')
+function DiagnosticManager:new()
+    local obj = {}
+    obj._diagnostics = {}
+
+    setmetatable(obj, self)
+
+    return obj
+end
+
+---@param a vim.Diagnostic
+---@param b vim.Diagnostic
+---@return boolean
+function DiagnosticManager._diagnostics_are_equivalent(a, b)
+    for key, value in pairs(a) do
+        if value ~= b[key] then
+            return false
+        end
+    end
+
+    return true
+end
+
+---@param diagnostic vim.Diagnostic
+---@return boolean
+function DiagnosticManager:has(diagnostic)
+    for _, existing in ipairs(self._diagnostics) do
+        if self._diagnostics_are_equivalent(diagnostic, existing) then
+            return true
+        end
+    end
+
+    return false
+end
+
+---@param diagnostics vim.Diagnostic[]
+function DiagnosticManager:add(diagnostics)
+    for _, diagnostic in ipairs(diagnostics) do
+        if not self:has(diagnostic) then
+            table.insert(self._diagnostics, diagnostic)
+        end
+    end
+
+    self:apply()
+end
+
+---@param diagnostics vim.Diagnostic[]
+function DiagnosticManager:remove(diagnostics)
+    local to_keep = {}
+
+    for _, diagnostic in ipairs(diagnostics) do
+        for _, existing in ipairs(self._diagnostics) do
+            if not self._diagnostics_are_equivalent(diagnostic, existing) then
+                table.insert(to_keep, existing)
+            end
+        end
+    end
+
+    self._diagnostics = to_keep
+    self:apply()
+end
+
+function DiagnosticManager:clear()
+    self._diagnostics = {}
+    self:apply()
+end
+
+---@param colorscheme Colorscheme
+function DiagnosticManager:_apply(colorscheme)
+    local diagnostics = self:get()
+
+    if POLYCHROME_EDITING then
+        vim.api.nvim_buf_clear_namespace(0, M.DIAGNOSTIC_NAMESPACE, 0, -1)
+        vim.diagnostic.set(M.DIAGNOSTIC_NAMESPACE, 0, diagnostics)
+    else
+        for _, diagnostic in ipairs(diagnostics) do
+            vim.notify(
+                "[" .. (colorscheme and colorscheme.name or "polychrome") .. "] " .. diagnostic.message,
+                vim.log.levels.ERROR
+            )
+        end
+    end
+end
+
+DiagnosticManager.apply = vim.schedule_wrap(DiagnosticManager._apply)
+
+---@return vim.Diagnostic[]
+function DiagnosticManager:get()
+    return self._diagnostics
+end
+
+function DiagnosticManager:__len()
+    return #self:get()
+end
+
+M.DIAGNOSTIC_NAMESPACE = vim.api.nvim_create_namespace("polychrome")
 M.DIAGNOSTICS = DiagnosticManager:new()
 
 ---@param node TSNode
@@ -134,12 +141,15 @@ local function ts_find_table_string_value(value)
 
     local root = tree:parse()[1]:root()
 
-    local query = vim.treesitter.query.parse('lua', ([[
+    local query = vim.treesitter.query.parse(
+        "lua",
+        ([[
         (field
           name: (identifier)
           value: (string
             content: (string_content) @value (#eq? @value "%s")))
-    ]]):format(value))
+    ]]):format(value)
+    )
 
     local found = {}
     for _, captures, _ in query:iter_matches(root, 0) do
@@ -155,13 +165,15 @@ end
 
 local function ts_find_table_value(group, key)
     local success, tree = pcall(vim.treesitter.get_parser, 0)
-    if not success then
+    if not success or tree == nil then
         return {}
     end
 
     local root = tree:parse()[1]:root()
 
-    local query = vim.treesitter.query.parse('lua', ([[
+    local query = vim.treesitter.query.parse(
+        "lua",
+        ([[
         (function_call
           name: (identifier) @group (#eq? @group "%s")
           arguments: (arguments
@@ -169,7 +181,8 @@ local function ts_find_table_value(group, key)
               (field
                 name: (identifier) @key (#eq? @key "%s")
                 value: (_) @value))))
-    ]]):format(group, key))
+    ]]):format(group, key)
+    )
 
     local found = {}
     for _, captures, _ in query:iter_matches(root, 0) do
@@ -183,23 +196,25 @@ local function ts_find_table_value(group, key)
     return found
 end
 
-
 local function ts_find_table_key(group_name, value)
     local success, tree = pcall(vim.treesitter.get_parser, 0)
-    if not success then
+    if not success or tree == nil then
         return {}
     end
 
     local root = tree:parse()[1]:root()
 
-    local query = vim.treesitter.query.parse('lua', ([[
+    local query = vim.treesitter.query.parse(
+        "lua",
+        ([[
         (function_call
           name: (identifier) @group (#eq? @group "%s")
           arguments: (arguments
             (table_constructor
               (field
                 name: (identifier) @key (#eq? @key "%s")))))
-    ]]):format(group_name, value))
+    ]]):format(group_name, value)
+    )
 
     local found = {}
     for _, captures, _ in query:iter_matches(root, 0) do
@@ -230,30 +245,30 @@ M.ERROR_SEVERITIES = {
 ---@type table<ErrorType, fun(error: ErrorBag): string>
 M.ERROR_MESSAGES = {
     [M.ERROR_TYPES.INVALID_COLOR] = function(error)
-        return ('Invalid color: \'%s\''):format(error.message:match('Invalid highlight color: \'(.*)\''))
+        return ("Invalid color: '%s'"):format(error.message:match("Invalid highlight color: '(.*)'"))
     end,
     [M.ERROR_TYPES.INVALID_ATTRIBUTE_KEY] = function(error)
-        return ('Invalid attribute name: %s'):format(error.message:match('Invalid attribute key: \'(.*)\''))
+        return ("Invalid attribute name: %s"):format(error.message:match("Invalid attribute key: '(.*)'"))
     end,
     [M.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE] = function(error)
-        return 'Invalid attribute value'
+        return "Invalid attribute value"
     end,
 }
 
 ---@type table<ErrorType, fun(error: ErrorBag): TSNodeRange[]>
 M.REFINE_ERROR_LOCATION = {
     [M.ERROR_TYPES.INVALID_COLOR] = function(error)
-        local _, _, bad_value = error.message:find('Invalid highlight color: \'(.*)\'')
+        local _, _, bad_value = error.message:find("Invalid highlight color: '(.*)'")
 
         return ts_find_table_string_value(bad_value)
     end,
     [M.ERROR_TYPES.INVALID_ATTRIBUTE_KEY] = function(error)
-        local _, _, bad_value = error.message:find('Invalid attribute key: \'(.*)\'')
+        local _, _, bad_value = error.message:find("Invalid attribute key: '(.*)'")
 
         return ts_find_table_key(error.group.name, bad_value)
     end,
     [M.ERROR_TYPES.INVALID_ATTRIBUTE_VALUE] = function(error)
-        local _, _, key = error.message:find('Invalid attribute value for: \'(.*)\'')
+        local _, _, key = error.message:find("Invalid attribute value for: '(.*)'")
 
         return ts_find_table_value(error.group.name, key)
     end,
@@ -279,13 +294,16 @@ local function create_diagnostics_from_error(error)
         ---@type vim.Diagnostic
         local new = {
             message = M.ERROR_MESSAGES[error.type](error),
-            source = 'polychrome',
+            source = "polychrome",
             namespace = M.DIAGNOSTIC_NAMESPACE,
             severity = M.ERROR_SEVERITIES[error.type],
             lnum = location.row,
             col = location.col,
             end_lnum = location.end_row or location.row,
             end_col = location.end_col or location.col,
+            bufnr = vim.iter(vim.api.nvim_list_bufs()):find(function(bufnr)
+                return vim.api.nvim_buf_get_name(bufnr) == error.group._definition_locations[1].source
+            end),
         }
         table.insert(diagnostics, new)
     end

@@ -36,10 +36,17 @@ function M:from_hex(input)
     local hex = input:gsub("%#", "")
     local num = tonumber(hex, 16)
 
+    return self:from_number(num)
+end
+
+---Create an RGB instance from a raw number.
+---@param input number
+---@return RGB
+function M:from_number(input)
     return self:new({
-        r = bit.rshift(num, 16),
-        g = bit.band(bit.rshift(num, 8), 255),
-        b = bit.band(num, 255),
+        r = bit.rshift(input, 16),
+        g = bit.band(bit.rshift(input, 8), 255),
+        b = bit.band(input, 255),
     })
 end
 

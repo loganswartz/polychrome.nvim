@@ -35,10 +35,10 @@ end
 ---@generic F : function
 ---@param fn `F` Function to throttle
 ---@param ms number Timeout in ms
----@return (F, uv_timer_t|nil) throttled function and timer. Remember to call
+---@return F, uv.uv_timer_t|nil throttled function and timer. Remember to call
 function M.throttle(fn, ms)
     vim.validate({
-        fn = { fn, "f" },
+        fn = { fn, "function" },
         ms = {
             ms,
             function(inner_ms)
@@ -48,7 +48,7 @@ function M.throttle(fn, ms)
         },
     })
 
-    local timer = vim.loop.new_timer()
+    local timer = assert(vim.loop.new_timer(), "Failed to create timer")
     local throttled = false
 
     local function wrapper(...)
@@ -80,7 +80,9 @@ function M.escape(s, prefix)
     local special = { "^", "$", "(", ")", "%", ".", "[", "]", "*", "+", "-", "?" }
 
     -- generate a table like { char = prefix .. char }
-    local mapped = vim.tbl_map(function(c) return { [c] = prefix .. c } end, special)
+    local mapped = vim.tbl_map(function(c)
+        return { [c] = prefix .. c }
+    end, special)
     local flattened = vim.iter(mapped):flatten():totable()
 
     return s:gsub(".", flattened)
@@ -99,7 +101,9 @@ end
 ---@param comparison (fun(a: any, b: any): boolean)|nil
 ---@return number|string|nil
 function M.find(table, value, comparison)
-    comparison = comparison or function(a, b) return a == b end
+    comparison = comparison or function(a, b)
+        return a == b
+    end
 
     for k, v in pairs(table) do
         if comparison(v, value) then

@@ -1,5 +1,5 @@
-local preview = require('polychrome.preview')
-local templates = require('polychrome.templates')
+local preview = require("polychrome.preview")
+local templates = require("polychrome.templates")
 
 local M = {}
 
@@ -13,7 +13,7 @@ local Command = {}
 ---@generic K
 ---@param subcommands table<K|'_default', any>
 ---@param default K|nil
-Command.new = function(subcommands, default)
+function Command.new(subcommands, default)
     local o = subcommands
     o._default = default
 
@@ -21,33 +21,33 @@ Command.new = function(subcommands, default)
     return o
 end
 
-Command.__call = function(self, sub, ...)
+function Command:__call(sub, ...)
     if sub == nil and self._default == nil then
-        print('You must specify a subcommand! (valid subcommands: ' .. table.concat(vim.tbl_keys(self), ', ') .. ')')
+        print("You must specify a subcommand! (valid subcommands: " .. table.concat(vim.tbl_keys(self), ", ") .. ")")
         return
     end
 
     local func = self[sub]
 
     if func == nil then
-        print('Unknown subcommand: ' .. sub)
+        print("Unknown subcommand: " .. sub)
         return
     end
 
     return func(...)
 end
 
-Command.make_handler = function(self)
+function Command:make_handler()
     ---@param args table
     return function(args)
         self((unpack or table.unpack)(args.fargs))
     end
 end
 
-Command.make_complete_handler = function(self)
+function Command:make_complete_handler()
     return function(arg_lead, cmd_line, cursor_pos)
-        local before_arg_lead = string.gsub(cmd_line, arg_lead, '')
-        local args = vim.split(before_arg_lead, ' ', { trimempty = true })
+        local before_arg_lead = string.gsub(cmd_line, arg_lead, "")
+        local args = vim.split(before_arg_lead, " ", { trimempty = true })
         -- drop the first (root) arg
         args = vim.list_slice(args, 2)
 
@@ -68,14 +68,16 @@ Command.make_complete_handler = function(self)
             cmd = sub
         end
 
-        local subcommands = vim.tbl_filter(function(v) return v ~= '_default' end, vim.tbl_keys(cmd))
+        local subcommands = vim.tbl_filter(function(v)
+            return v ~= "_default"
+        end, vim.tbl_keys(cmd))
         table.sort(subcommands)
 
         return subcommands
     end
 end
 
-Command.__index = function(self, key)
+function Command:__index(key)
     if key == nil then
         return self[self._default]
     end
@@ -87,9 +89,9 @@ local COMMANDS = Command.new({
     preview = Command.new({
         start = preview.start,
         stop = preview.stop,
-    }, 'start'),
+    }, "start"),
     template = Command.new({
-        theme = templates.read_into_current_buffer_factory('theme.lua.template'),
+        theme = templates.read_into_current_buffer_factory("theme.lua.template"),
     }),
 })
 
@@ -100,17 +102,24 @@ M.setup = function()
         return
     end
 
-    vim.api.nvim_create_user_command('Polychrome', COMMANDS:make_handler(),
-        { nargs = '+', complete = COMMANDS:make_complete_handler() })
+    vim.api.nvim_create_user_command(
+        "Polychrome",
+        COMMANDS:make_handler(),
+        { nargs = "+", complete = COMMANDS:make_complete_handler() }
+    )
 
     -- deprecated commands
-    vim.api.nvim_create_user_command('StartPreview', function()
-        vim.deprecate(":StartPreview", ":Polychrome preview or :Polychrome preview start", "future versions",
+    vim.api.nvim_create_user_command("StartPreview", function()
+        vim.deprecate(
+            ":StartPreview",
+            ":Polychrome preview or :Polychrome preview start",
+            "future versions",
             "polychrome.nvim",
-            false)
+            false
+        )
         preview.start()
     end, {})
-    vim.api.nvim_create_user_command('StopPreview', function()
+    vim.api.nvim_create_user_command("StopPreview", function()
         vim.deprecate(":StopPreview", ":Polychrome preview stop", "future versions", "polychrome.nvim", false)
         preview.stop()
     end, {})

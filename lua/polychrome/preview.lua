@@ -1,9 +1,10 @@
-local utils = require('polychrome.utils')
-local diagnostics = require('polychrome.diagnostics')
+local utils = require("polychrome.utils")
+local diagnostics = require("polychrome.diagnostics")
+local Color = require("polychrome.color.base")
 
 local M = {}
 
-local PREVIEW_NAMESPACE = vim.api.nvim_create_namespace('polychrome_preview')
+local PREVIEW_NAMESPACE = vim.api.nvim_create_namespace("polychrome.preview")
 --- The ID of the augroup for our autocommands
 local AUGROUP_ID = nil
 ---@type string|nil
@@ -26,7 +27,7 @@ end
 local function apply_hl_group_name_hl(groups, line_nr, line)
     local start, _end, match = line:find(HL_NAME_REGEX)
     if match and groups[match] ~= nil then
-        vim.api.nvim_buf_add_highlight(0, PREVIEW_NAMESPACE, match, line_nr - 1, start or 0, _end - 1 or -1)
+        vim.hl.range(0, PREVIEW_NAMESPACE, match, { line_nr - 1, start or 0 }, { line_nr - 1, _end - 1 or -1 })
     end
 end
 
@@ -36,17 +37,17 @@ local function apply_color_obj_hl(line_nr, line)
     if start ~= nil then
         name = string.lower(name)
 
-        local class = require('polychrome.color')[name]
-        if class.is_color_object then
+        local class = require("polychrome.color")[name]
+        if Color.is_color(class) then
             local color = class(tonumber(a), tonumber(b), tonumber(c))
             if not color then
                 return
             end
 
-            local hl_name = table.concat({ name, a, b, c }, '')
+            local hl_name = table.concat({ name, a, b, c }, "")
 
-            vim.api.nvim_set_hl(0, hl_name, { fg = 'black', bg = color:hex() })
-            vim.api.nvim_buf_add_highlight(0, PREVIEW_NAMESPACE, hl_name, line_nr - 1, start - 1, _end or -1)
+            vim.api.nvim_set_hl(0, hl_name, { fg = "black", bg = color:hex() })
+            vim.hl.range(0, PREVIEW_NAMESPACE, hl_name, { line_nr - 1, start - 1 }, { line_nr - 1, _end or -1 })
         end
     end
 end
@@ -76,7 +77,7 @@ local function apply_colorscheme()
     end
 
     -- valid lua, so set the filetype in case it's a template
-    vim.bo.filetype = 'lua'
+    vim.bo.filetype = "lua"
 
     -- run it
     local ok = pcall(definition)
@@ -86,7 +87,7 @@ local function apply_colorscheme()
 
     -- check if a definition was run in the file
     if POLYCHROME_EDITING == nil or POLYCHROME_EDITING == true then
-        vim.notify('[polychrome] Could not find a colorscheme through the current buffer!')
+        vim.notify("[polychrome] Could not find a colorscheme through the current buffer!")
         return
     end
 
@@ -106,12 +107,12 @@ local function apply_colorscheme()
         -- non-internal calls from being able to set that value.
         --
         -- https://github.com/neovim/neovim/blob/b8e947ed4ed04f9aeef471f579451bbf2bb2993d/src/nvim/api/autocmd.c#L771
-        vim.api.nvim_exec_autocmds('ColorSchemePre', { pattern = POLYCHROME_EDITING.name })
+        vim.api.nvim_exec_autocmds("ColorSchemePre", { pattern = POLYCHROME_EDITING.name })
 
         -- apply the highlights
         POLYCHROME_EDITING:apply()
 
-        vim.api.nvim_exec_autocmds('ColorScheme', { pattern = POLYCHROME_EDITING.name })
+        vim.api.nvim_exec_autocmds("ColorScheme", { pattern = POLYCHROME_EDITING.name })
     end)
 end
 
@@ -136,12 +137,12 @@ function M.start()
     PREVIOUS_COLORSCHEME = vim.g.colors_name
 
     -- register the live preview
-    AUGROUP_ID = vim.api.nvim_create_augroup('polychrome_preview', { clear = true })
+    AUGROUP_ID = vim.api.nvim_create_augroup("polychrome_preview", { clear = true })
     vim.api.nvim_create_autocmd({
-        'TextChanged',
-        'TextChangedI',
-        'TextChangedP',
-        'TextChangedT',
+        "TextChanged",
+        "TextChangedI",
+        "TextChangedP",
+        "TextChangedT",
     }, {
         buffer = 0,
         group = AUGROUP_ID,
@@ -164,7 +165,7 @@ end
 
 -- See |hitest.vim|
 function M.show_hitest()
-    vim.cmd [[ so $VIMRUNTIME/syntax/hitest.vim ]]
+    vim.cmd([[ so $VIMRUNTIME/syntax/hitest.vim ]])
 end
 
 return M
