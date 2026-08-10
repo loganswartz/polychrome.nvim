@@ -1,13 +1,13 @@
+local state = require("polychrome.state")
 local color = require("polychrome.color")
 local diagnostics = require("polychrome.diagnostics")
 local utils = require("polychrome.utils")
+local make_config = require("polychrome.config").make_config
 local Group = require("polychrome.group").Group
 local GUI_HIGHLIGHTS = require("polychrome.group").GUI_HIGHLIGHTS
+local osc = require("polychrome.osc")
 
 local M = {}
-
----@class ColorschemeConfig
----@field inject_gui_groups boolean|nil Should some default groups be automatically defined?
 
 ---@class HealthChecker
 ---@field check fun(): nil The function that will run the health checks
@@ -15,18 +15,18 @@ local M = {}
 ---@class Colorscheme
 ---@field name string
 ---@field groups { [string]: Group }
----@field config ColorschemeConfig
+---@field config PolychromeFullConfig
 M.Colorscheme = {}
 M.Colorscheme.__index = M.Colorscheme
 
 ---@param name string
----@param config ColorschemeConfig|nil
+---@param config PolychromeConfig?
 ---@return Colorscheme
 function M.Colorscheme.new(name, config)
     local obj = {}
     obj.name = name
     obj.groups = {}
-    obj.config = config or {}
+    obj.config = make_config(config)
 
     setmetatable(obj, M.Colorscheme)
 
@@ -36,7 +36,7 @@ end
 ---Define a new colorscheme.
 ---@param name string
 ---@param definition fun(_: fun())
----@param config ColorschemeConfig|nil
+---@param config PolychromeConfig?
 ---@return Colorscheme
 function M.Colorscheme.define(name, definition, config)
     assert(name, "You must give the colorscheme a name.")
@@ -44,26 +44,56 @@ function M.Colorscheme.define(name, definition, config)
 
     local colorscheme = M.Colorscheme.new(name, config)
 
-    -- register the typical GUI features
-    local skip_inject_gui = colorscheme.config.inject_gui_groups == false
-    -- don't apply if explicitly disabled
-    if not skip_inject_gui then
+    -- register the typical GUI features if not explicitly disabled
+    if not colorscheme.config.gui_groups.enable then
         colorscheme:_inject_gui_features()
     end
+
     -- register the user-specified highlights
     colorscheme:extend(definition)
 
     -- if the live preview mode is active, this allows it to access the
     -- colorscheme directly without any complicated logic
-    if POLYCHROME_EDITING ~= nil then
-        POLYCHROME_EDITING = colorscheme
+    if state.preview_is_active ~= nil then
+        state.preview_colorscheme = colorscheme
     end
 
     return colorscheme
 end
 
 --- Apply the created colorscheme.
+function M.Colorscheme:reload()
+    vim.cmd.colorscheme(self.name)
+end
+
+---Patch the given group as needed for the configured autotransparency
+---@param group Group
+function M.Colorscheme:_patch_group_for_autotransparency(group)
+    local transparent = self.config.autotransparency.groups[group.name]
+    if not transparent then
+        return
+    end
+
+    local match = self.groups[transparent.matches]
+    if match == nil then
+        return
+    end
+
+    local group_value = group.attributes[transparent.attribute]
+    local target_value = match.attributes[transparent.attribute]
+
+    if group_value == target_value then
+        group.attributes[transparent.attribute] = "none"
+    end
+end
+
+--- Apply the created colorscheme.
 function M.Colorscheme:apply()
+    if self.config.osc.enable then
+        osc.setup(self.config)
+        self:extend(state.osc_groups)
+    end
+
     vim.cmd([[ highlight clear ]])
     vim.cmd([[ syntax on ]])
 
@@ -72,12 +102,16 @@ function M.Colorscheme:apply()
     local errors = {}
     for name, group in pairs(self.groups) do
         local ok, result = pcall(function()
+            if self.config.autotransparency.enable then
+                self:_patch_group_for_autotransparency(group)
+            end
+
             local hl = group:to_hl()
 
             vim.api.nvim_set_hl(0, name, hl)
         end)
 
-        if POLYCHROME_EDITING and not ok then
+        if state.preview_is_active and not ok then
             table.insert(errors, {
                 type = diagnostics.ERROR_TYPES.INVALID_COLOR,
                 message = result,
@@ -86,15 +120,37 @@ function M.Colorscheme:apply()
         end
     end
 
-    if POLYCHROME_EDITING then
+    if state.preview_is_active then
         diagnostics.add(errors)
         diagnostics.show(self)
+    end
+
+    state.current_colorscheme = self
+end
+
+---Run the given function with a modified global environment to enable use of our DSL
+---@param func_or_table Group[]|fun(_: fun())
+function M.Colorscheme:extend(func_or_table)
+    if type(func_or_table) == "table" then
+        return self:_extend_with_table(func_or_table)
+    else
+        return self:_extend_with_func(func_or_table)
+    end
+end
+
+---Extend the colorscheme with a prepopulated table of groups
+---@param table Group[]|{[string]: Group}
+function M.Colorscheme:_extend_with_table(table)
+    local register = utils.partial(self._register_group, self)
+
+    for _, group in pairs(table) do
+        register(group)
     end
 end
 
 ---Run the given function with a modified global environment to enable use of our DSL
 ---@param func fun(_: fun())
-function M.Colorscheme:extend(func)
+function M.Colorscheme:_extend_with_func(func)
     local register = utils.partial(self._register_group, self)
 
     -- this will serve as the global environment for the given function
@@ -144,17 +200,26 @@ function M.Colorscheme:clone_as(name)
 end
 
 ---Register a group to the colorscheme
----@param group_name string
+---@param group_or_name Group|string
 ---@return Group
-function M.Colorscheme:_register_group(group_name)
-    local existing = self.groups[group_name]
-    if existing then
-        return existing
+function M.Colorscheme:_register_group(group_or_name)
+    local group
+
+    if type(group_or_name) == "string" then
+        local name = group_or_name
+
+        local existing = self.groups[name]
+        if existing then
+            return existing
+        end
+
+        group = Group.new(name)
+    else
+        group = group_or_name
     end
 
-    local group = Group.new(group_name)
     -- register the group to the scheme
-    rawset(self.groups, group_name, group)
+    rawset(self.groups, group.name, group)
 
     return group
 end

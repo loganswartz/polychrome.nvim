@@ -78,24 +78,11 @@ function M:from_parent(parent)
     })
 end
 
-function M.__unm(self)
-    return Color.__unm(self)
-end
-
-function M.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function M.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function M.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function M.__div(self, other)
-    return Color.__div(self, other)
-end
+M.__unm = Color.__unm
+M.__eq = Color.__eq
+M.__add = Color.__add
+M.__sub = Color.__sub
+M.__mul = Color.__mul
+M.__div = Color.__div
 
 return M

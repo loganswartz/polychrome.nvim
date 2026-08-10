@@ -124,24 +124,11 @@ function HSL:from_parent(parent)
     return self:new(h, s, l)
 end
 
-function HSL.__unm(self)
-    return Color.__unm(self)
-end
-
-function HSL.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function HSL.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function HSL.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function HSL.__div(self, other)
-    return Color.__div(self, other)
-end
+HSL.__unm = Color.__unm
+HSL.__eq = Color.__eq
+HSL.__add = Color.__add
+HSL.__sub = Color.__sub
+HSL.__mul = Color.__mul
+HSL.__div = Color.__div
 
 return HSL

@@ -1,6 +1,6 @@
-local colorscheme = require('polychrome.colorscheme')
-local color = require('polychrome.color')
-local commands = require('polychrome.commands')
+local colorscheme = require("polychrome.colorscheme")
+local color = require("polychrome.color")
+local commands = require("polychrome.commands")
 
 local M = {
     Colorscheme = colorscheme.Colorscheme,

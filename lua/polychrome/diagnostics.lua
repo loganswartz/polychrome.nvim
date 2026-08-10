@@ -1,3 +1,5 @@
+local state = require("polychrome.state")
+
 local M = {}
 
 ---@alias PositionKey string
@@ -92,7 +94,7 @@ end
 function DiagnosticManager:_apply(colorscheme)
     local diagnostics = self:get()
 
-    if POLYCHROME_EDITING then
+    if state.preview_is_active then
         vim.api.nvim_buf_clear_namespace(0, M.DIAGNOSTIC_NAMESPACE, 0, -1)
         vim.diagnostic.set(M.DIAGNOSTIC_NAMESPACE, 0, diagnostics)
     else

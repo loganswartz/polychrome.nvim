@@ -34,24 +34,11 @@ function Oklch:from_parent(parent)
     })
 end
 
-function Oklch.__unm(self)
-    return Color.__unm(self)
-end
-
-function Oklch.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function Oklch.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function Oklch.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function Oklch.__div(self, other)
-    return Color.__div(self, other)
-end
+Oklch.__unm = Color.__unm
+Oklch.__eq = Color.__eq
+Oklch.__add = Color.__add
+Oklch.__sub = Color.__sub
+Oklch.__mul = Color.__mul
+Oklch.__div = Color.__div
 
 return Oklch

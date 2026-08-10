@@ -41,24 +41,11 @@ function lRGB._from_lms_naive(self, parent)
     return self:new(lrgb)
 end
 
-function lRGB.__unm(self)
-    return Color.__unm(self)
-end
-
-function lRGB.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function lRGB.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function lRGB.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function lRGB.__div(self, other)
-    return Color.__div(self, other)
-end
+lRGB.__unm = Color.__unm
+lRGB.__eq = Color.__eq
+lRGB.__add = Color.__add
+lRGB.__sub = Color.__sub
+lRGB.__mul = Color.__mul
+lRGB.__div = Color.__div
 
 return lRGB

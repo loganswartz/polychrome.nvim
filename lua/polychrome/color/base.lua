@@ -109,13 +109,15 @@ function Color.from(self_or_value, value)
     elseif type(value) == "string" then
         -- hex string
         if vim.startswith(value, "#") then
-            color = rgb:from_number(value)
+            color = rgb:from_hex(value)
         end
     end
 
     if self ~= nil then
-        return color:to(self)
+        color = color:to(self:get_type())
     end
+
+    return color
 end
 
 ---Convert the color to a `<number of components> x 1` matrix.
@@ -406,6 +408,8 @@ function Color:__call(...)
 end
 
 function Color:__eq(other)
+    other = other:to(self:get_type())
+
     for _, key in ipairs(self.components) do
         if self[key] ~= other[key] then
             return false

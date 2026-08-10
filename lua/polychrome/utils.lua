@@ -30,13 +30,12 @@ end
 --- Adapted from https://github.com/runiq/neovim-throttle-debounce/blob/5247b097df15016ab31db672b77ec4938bb9cbfd/lua/throttle-debounce/init.lua#L3-L39
 ---
 --- Throttles a function on the leading edge. Automatically `schedule_wrap()`s.
---- `timer:close()` at the end or you will leak memory!
 ---
 ---@generic F : function
----@param fn `F` Function to throttle
 ---@param ms number Timeout in ms
----@return F, uv.uv_timer_t|nil throttled function and timer. Remember to call
-function M.throttle(fn, ms)
+---@param fn `F` Function to throttle
+---@return F The throttled function
+function M.throttle(ms, fn)
     vim.validate({
         fn = { fn, "function" },
         ms = {
@@ -48,7 +47,7 @@ function M.throttle(fn, ms)
         },
     })
 
-    local timer = assert(vim.loop.new_timer(), "Failed to create timer")
+    local timer
     local throttled = false
 
     local function wrapper(...)
@@ -56,14 +55,55 @@ function M.throttle(fn, ms)
             return
         end
 
+        if timer == nil then
+            timer = assert(vim.loop.new_timer(), "Failed to create timer")
+        end
+
         throttled = true
         timer:start(ms, 0, function()
             throttled = false
+
+            timer:close()
+            timer = nil
         end)
+
         pcall(vim.schedule_wrap(fn), select(1, ...))
     end
 
-    return wrapper, timer
+    return wrapper
+end
+
+---@generic A
+---@param ms number Timeout in ms
+---@param fn fun(...: `A`): any Function to debounce
+---@return fun(...: A): nil The debounced function
+function M.debounce(ms, fn)
+    vim.validate({
+        fn = { fn, "function" },
+        ms = {
+            ms,
+            function(inner_ms)
+                return type(inner_ms) == "number" and inner_ms > 0
+            end,
+            "number > 0",
+        },
+    })
+
+    local timer
+
+    local function wrapper(...)
+        local args = { ... }
+
+        if timer then
+            timer:stop()
+        end
+
+        timer = vim.defer_fn(function()
+            pcall(fn, select(1, args))
+        end, ms)
+    end
+
+    return wrapper
 end
 
 --- Read the contents of the current buffer

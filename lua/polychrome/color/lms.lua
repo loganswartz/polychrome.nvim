@@ -12,24 +12,11 @@ local LMS = {
 LMS.__index = LMS
 setmetatable(LMS, Color)
 
-function LMS.__unm(self)
-    return Color.__unm(self)
-end
-
-function LMS.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function LMS.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function LMS.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function LMS.__div(self, other)
-    return Color.__div(self, other)
-end
+LMS.__unm = Color.__unm
+LMS.__eq = Color.__eq
+LMS.__add = Color.__add
+LMS.__sub = Color.__sub
+LMS.__mul = Color.__mul
+LMS.__div = Color.__div
 
 return LMS

@@ -42,24 +42,11 @@ function Oklab:from_parent(parent)
     return self:new(lab)
 end
 
-function Oklab.__unm(self)
-    return Color.__unm(self)
-end
-
-function Oklab.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function Oklab.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function Oklab.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function Oklab.__div(self, other)
-    return Color.__div(self, other)
-end
+Oklab.__unm = Color.__unm
+Oklab.__eq = Color.__eq
+Oklab.__add = Color.__add
+Oklab.__sub = Color.__sub
+Oklab.__mul = Color.__mul
+Oklab.__div = Color.__div
 
 return Oklab

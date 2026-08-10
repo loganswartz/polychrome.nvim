@@ -32,6 +32,7 @@ local function is_valid_link(value)
 end
 
 --- The options that hold the actual color values.
+---@enum (key) ColorAttribute
 M.COLOR_OPTIONS = {
     fg = is_valid_color_value,
     bg = is_valid_color_value,
@@ -108,13 +109,6 @@ setmetatable(M.ALLOWED_OPTIONS, {
         return rawget(self, key)
     end,
 })
-
---- Convert a raw color number (from `nvim_get_hl`) to a hex string.
----
----@param raw number
-local function raw_color_to_hex(raw)
-    return string.format("#%06x", raw)
-end
 
 ---@class GroupAttributes
 ---@field fg Color|string|nil
@@ -244,10 +238,10 @@ function M.Group:set(key, value)
         goto finish
     end
 
-    -- convert raw color numbers to hex strings
+    -- convert raw color numbers to color objects
     -- probably unnecessary? but may be useful for debugging
-    if vim.tbl_contains(M.COLOR_OPTIONS, key) and type(value) == "number" then
-        value = raw_color_to_hex(value)
+    if vim.tbl_contains(vim.tbl_keys(M.COLOR_OPTIONS), key) and type(value) == "number" then
+        value = Color.from(value)
     end
 
     rawset(self.attributes, key, value)
@@ -277,6 +271,9 @@ end
 ---@return Group?
 function M.Group.from_hl(name)
     local group = vim.api.nvim_get_hl(0, { name = name })
+    if vim.tbl_isempty(group) then
+        return nil
+    end
 
     return M.Group.new(name, group)
 end

@@ -31,24 +31,11 @@ function CIEXYZ:to_parent()
     return self:get_parent_gamut():new(lms:transpose()[1])
 end
 
-function CIEXYZ.__unm(self)
-    return Color.__unm(self)
-end
-
-function CIEXYZ.__add(self, other)
-    return Color.__add(self, other)
-end
-
-function CIEXYZ.__sub(self, other)
-    return Color.__sub(self, other)
-end
-
-function CIEXYZ.__mul(self, other)
-    return Color.__mul(self, other)
-end
-
-function CIEXYZ.__div(self, other)
-    return Color.__div(self, other)
-end
+CIEXYZ.__unm = Color.__unm
+CIEXYZ.__eq = Color.__eq
+CIEXYZ.__add = Color.__add
+CIEXYZ.__sub = Color.__sub
+CIEXYZ.__mul = Color.__mul
+CIEXYZ.__div = Color.__div
 
 return CIEXYZ

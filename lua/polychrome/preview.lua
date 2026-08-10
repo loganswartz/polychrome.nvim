@@ -1,3 +1,4 @@
+local state = require("polychrome.state")
 local utils = require("polychrome.utils")
 local diagnostics = require("polychrome.diagnostics")
 local Color = require("polychrome.color.base")
@@ -69,8 +70,7 @@ local function apply_colorscheme()
     clear_highlights()
 
     -- load current file
-    ---@type Colorscheme|true|nil
-    POLYCHROME_EDITING = true
+    state.preview_is_active = true
     local definition = load(utils.read_buffer(0))
     if not definition then
         return
@@ -86,7 +86,7 @@ local function apply_colorscheme()
     end
 
     -- check if a definition was run in the file
-    if POLYCHROME_EDITING == nil or POLYCHROME_EDITING == true then
+    if state.preview_colorscheme == nil then
         vim.notify("[polychrome] Could not find a colorscheme through the current buffer!")
         return
     end
@@ -107,12 +107,12 @@ local function apply_colorscheme()
         -- non-internal calls from being able to set that value.
         --
         -- https://github.com/neovim/neovim/blob/b8e947ed4ed04f9aeef471f579451bbf2bb2993d/src/nvim/api/autocmd.c#L771
-        vim.api.nvim_exec_autocmds("ColorSchemePre", { pattern = POLYCHROME_EDITING.name })
+        vim.api.nvim_exec_autocmds("ColorSchemePre", { pattern = state.preview_colorscheme.name })
 
         -- apply the highlights
-        POLYCHROME_EDITING:apply()
+        state.preview_colorscheme:apply()
 
-        vim.api.nvim_exec_autocmds("ColorScheme", { pattern = POLYCHROME_EDITING.name })
+        vim.api.nvim_exec_autocmds("ColorScheme", { pattern = state.preview_colorscheme.name })
     end)
 end
 
