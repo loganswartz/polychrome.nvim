@@ -34,6 +34,7 @@ function Oklch:from_parent(parent)
     })
 end
 
+Oklch.__tostring = Color.__tostring
 Oklch.__unm = Color.__unm
 Oklch.__eq = Color.__eq
 Oklch.__add = Color.__add

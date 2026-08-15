@@ -54,6 +54,7 @@ M.OSC_GROUPS = {
 local group_name = "polychrome.osc"
 local group = vim.api.nvim_create_augroup(group_name, {})
 
+---@param input string A hex number value that is 1 to 4 characters long
 local function to_8_bit_value(input)
     -- get bit depth
     local depth = math.pow(16, #input)
@@ -101,6 +102,19 @@ function M.extract_osc_color_values(resp)
     return r, g, b, a
 end
 
+---Convert a color to an OSC-compatible string
+---@param color Color|number|string
+function M.to_osc_color_string(color)
+    local values = Color.from(color):to("rgb"):values()
+
+    return "rgb:"
+        .. vim.iter(values)
+            :map(function(value)
+                return to_8_bit_value(tostring(value))
+            end)
+            :join("/")
+end
+
 --- @param code number
 --- @param data_args (string|number)[]|nil
 function M.osc_set(code, data_args)
@@ -123,6 +137,9 @@ function M.osc_set(code, data_args)
             return true
         end,
     })
+
+    local osc_string = "\027]" .. params .. "\007"
+    vim.api.nvim_ui_send(osc_string)
 
     -- Wait for response
     vim.wait(100, function()

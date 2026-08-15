@@ -124,6 +124,7 @@ function HSL:from_parent(parent)
     return self:new(h, s, l)
 end
 
+HSL.__tostring = Color.__tostring
 HSL.__unm = Color.__unm
 HSL.__eq = Color.__eq
 HSL.__add = Color.__add

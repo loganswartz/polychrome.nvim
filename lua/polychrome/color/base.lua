@@ -36,8 +36,8 @@ local ANCESTOR_CACHE = {}
 ---@see Reference https://drafts.csswg.org/css-color/#color-conversion-code
 
 ---@class Color A generic color that can be converted to a hex value.
+---@field [string] number
 ---@field __type string
----@field _is_color_object true
 ---@field components string[] The components of the gamut in the order they are specified.
 ---@overload fun(self: Color, ...: number): Color Create a new instance of the class.
 ---@operator unm(): Color Negate the color
@@ -45,9 +45,7 @@ local ANCESTOR_CACHE = {}
 ---@operator sub(number|Color): Color Subtract two colors
 ---@operator mul(number|Color): Color Multiply two colors
 ---@operator div(number|Color): Color Divide two colors
-local Color = {
-    _is_color_object = true,
-}
+local Color = {}
 Color.__index = Color
 
 ---Create a new instance of the class.
@@ -89,13 +87,37 @@ end
 ---@param obj any
 ---@return boolean
 function Color.is_color(obj)
-    return type(obj) == "table" and obj._is_color_object == true
+    return type(obj) == "table" and utils.has_metatable(obj, Color)
 end
 
+---Is the object a color class?
+---@param obj any
+---@return boolean
+function Color.is_color_class(obj)
+    return Color.is_color(obj) and #obj:values() == 0
+end
+
+---Is the object a color instance?
+---@param obj any
+---@return boolean
+function Color.is_color_instance(obj)
+    return Color.is_color(obj) and #obj:values() > 0
+end
+
+---@alias ColorFromValue Color|number|string
+
+---@param self_or_value ColorFromValue
+---@param value ColorFromValue?
 function Color.from(self_or_value, value)
+    -- no-op if first arg is already a color instance
+    if Color.is_color_instance(self_or_value) then
+        return self_or_value
+    end
+
     local self = nil
 
-    if Color.is_color(self_or_value) then
+    -- first arg is a color
+    if type(self_or_value) ~= "number" and type(self_or_value) ~= "string" then
         self = self_or_value
     else
         value = self_or_value
@@ -114,7 +136,9 @@ function Color.from(self_or_value, value)
     end
 
     if self ~= nil then
-        color = color:to(self:get_type())
+        local _type = self:get_type()
+        assert(_type, "unable to determine type of self")
+        color = color:to(_type)
     end
 
     return color
@@ -411,7 +435,11 @@ function Color:__eq(other)
     other = other:to(self:get_type())
 
     for _, key in ipairs(self.components) do
-        if self[key] ~= other[key] then
+        -- scale-aware epsilon
+        local order = math.log((self[key] + other[key]) / 2, 10)
+        local epsilon = math.pow(10, order - 4)
+
+        if not utils.roughly_equal(self[key], other[key], epsilon) then
             return false
         end
     end

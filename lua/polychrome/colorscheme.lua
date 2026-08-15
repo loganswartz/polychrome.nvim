@@ -45,7 +45,7 @@ function M.Colorscheme.define(name, definition, config)
     local colorscheme = M.Colorscheme.new(name, config)
 
     -- register the typical GUI features if not explicitly disabled
-    if not colorscheme.config.gui_groups.enable then
+    if colorscheme.config.gui_groups.enable then
         colorscheme:_inject_gui_features()
     end
 
@@ -68,23 +68,28 @@ end
 
 ---Patch the given group as needed for the configured autotransparency
 ---@param group Group
+---@return Group
 function M.Colorscheme:_patch_group_for_autotransparency(group)
     local transparent = self.config.autotransparency.groups[group.name]
     if not transparent then
-        return
+        return group
     end
 
     local match = self.groups[transparent.matches]
     if match == nil then
-        return
+        return group
     end
 
-    local group_value = group.attributes[transparent.attribute]
+    local new = vim.deepcopy(group)
+
+    local group_value = new.attributes[transparent.attribute]
     local target_value = match.attributes[transparent.attribute]
 
     if group_value == target_value then
-        group.attributes[transparent.attribute] = "none"
+        new.attributes[transparent.attribute] = "none"
     end
+
+    return new
 end
 
 --- Apply the created colorscheme.
@@ -103,7 +108,7 @@ function M.Colorscheme:apply()
     for name, group in pairs(self.groups) do
         local ok, result = pcall(function()
             if self.config.autotransparency.enable then
-                self:_patch_group_for_autotransparency(group)
+                group = self:_patch_group_for_autotransparency(group)
             end
 
             local hl = group:to_hl()
@@ -284,11 +289,70 @@ function M.Colorscheme:health_checker()
         end
     end
 
+    local function check_osc_capabilities()
+        local sorted = vim.deepcopy(vim.tbl_values(osc.OSC_CODES))
+        table.sort(sorted)
+
+        for _, code in ipairs(sorted) do
+            local name = osc.OSC_GROUPS[code].prefix
+            local suffix = (code == osc.OSC_CODES.PALETTE) and "0" or ""
+
+            local detected = osc.get_osc_color(code, suffix == "" and {} or { suffix })
+
+            if detected then
+                local hi = vim.iter({ name, suffix }):join("")
+                vim.health.ok(("Detected %s: %s"):format(hi, detected))
+            else
+                vim.health.warn(("Unable to detect %s."):format(name))
+            end
+        end
+    end
+
+    local function check_autotransparency_capability()
+        if not self.config.autotransparency.enable then
+            vim.info("Autotransparency is not enabled")
+            return
+        end
+
+        local highlights = self.config.autotransparency.groups
+        for base_name, config in pairs(highlights) do
+            local hi = self.groups[base_name]
+            local target = self.groups[config.matches]
+
+            if hi[config.attribute] == target[config.attribute] then
+                vim.health.ok(
+                    ("%s and %s have matching %s values (%s)"):format(
+                        base_name,
+                        config.matches,
+                        config.attribute,
+                        tostring(hi[config.attribute])
+                    )
+                )
+            else
+                vim.health.warn(
+                    ("%s and %s do not have matching %s values (%s vs %s)"):format(
+                        base_name,
+                        config.matches,
+                        config.attribute,
+                        hi[config.attribute],
+                        target[config.attribute]
+                    )
+                )
+            end
+        end
+    end
+
     return {
         check = function()
             vim.health.start("Highlight groups")
             no_empty_highlights_groups()
             all_groups_defined_exactly_once()
+
+            vim.health.start("OSC Support")
+            check_osc_capabilities()
+
+            vim.health.start("Autotransparency Support")
+            check_autotransparency_capability()
         end,
     }
 end

@@ -78,6 +78,7 @@ function M:from_parent(parent)
     })
 end
 
+M.__tostring = Color.__tostring
 M.__unm = Color.__unm
 M.__eq = Color.__eq
 M.__add = Color.__add

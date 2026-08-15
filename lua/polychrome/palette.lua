@@ -104,27 +104,27 @@ function Palette:alter(operator, value)
     return new
 end
 
-function Palette:__add(a, b)
+function Palette.__add(a, b)
     return a:alter(operators.add, b)
 end
 
-function Palette:__sub(a, b)
+function Palette.__sub(a, b)
     return a:alter(operators.sub, b)
 end
 
-function Palette:__mul(a, b)
+function Palette.__mul(a, b)
     return a:alter(operators.mul, b)
 end
 
-function Palette:__div(a, b)
+function Palette.__div(a, b)
     return a:alter(operators.div, b)
 end
 
-function Palette:__pow(a, b)
+function Palette.__pow(a, b)
     return a:alter(math.pow, b)
 end
 
-function Palette:__mod(a, b)
+function Palette.__mod(a, b)
     return a:alter(math.fmod, b)
 end
 

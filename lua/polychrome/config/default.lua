@@ -32,6 +32,10 @@ M.autotransparency = {
             matches = "OscDefaultBackground",
             attribute = "bg",
         },
+        SignColumn = {
+            matches = "OscDefaultBackground",
+            attribute = "bg",
+        },
     },
 }
 

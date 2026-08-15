@@ -292,3 +292,42 @@ using code adapted from Björn Ottosson's methods described
 [here](https://bottosson.github.io/posts/gamutclipping/#source-code). The
 clipping is performed in the Oklab colorspace, which should result in a very
 accurate translation.
+
+# Testing
+
+The testing setup is based on [this blog post](https://mrcjkb.dev/posts/2023-06-06-luarocks-test.html).
+
+Ensure you have `luarocks` and a version of `lua@5.1` installed. On
+Ubuntu/Debian/other distros, this should be as simple as installing `luarocks`
+via your package manager (I wasn't able to get this working on macOS when
+installing via homebrew).
+
+Additionally, your shell needs to be configured to be able to use `luarocks`.
+Something like this in your `.profile`/`.bashrc`/`.zshrc`/etc should be
+sufficient:
+
+```shell
+eval $(luarocks path)
+```
+
+Then, run `luarocks test --local` in the root of the repo.
+
+If you want LSP hints while working on tests, install and configure these
+plugins like so (example assumes you're using `lazy.nvim`):
+
+```lua
+    { "LuaCATS/luassert", name = "luassert-types", lazy = true },
+    { "LuaCATS/busted", name = "busted-types", lazy = true },
+    {
+        "folke/lazydev.nvim",
+        opts = {
+            library = {
+                -- Load luvit types when the `vim.uv` word is found
+                { path = "${3rd}/luv/library", words = { "vim%.uv" } },
+                -- busted types
+                { path = "luassert-types/library", words = { "assert" } },
+                { path = "busted-types/library", words = { "describe" } },
+            },
+        },
+    },
+```

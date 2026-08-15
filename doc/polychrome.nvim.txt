@@ -99,6 +99,28 @@ This can be accomplished by creating a file in `colors/` named
 This should be all that's needed to make your colorscheme loadable.
 
 ==============================================================================
+4. Config                                                  *polychrome-config*
+
+When defining a colorscheme, you can optionally pass a config object as the
+3rd argument:
+
+>lua
+    local Colorscheme = require('polychrome').Colorscheme
+
+    ---@type PolychromeConfig
+    local config = {}
+
+    local my_colorscheme = Colorscheme.define('sunburn', function()
+	Normal { bg = '#181818' }
+    end, config)
+<
+
+The config allows you to control or enable several advanced features of
+polychrome for your colorscheme, including |polychrome-autotransparency| and
+|polychrome-osc|. Any config you pass is merged into the default config, which
+you can view with `:lua vim.print(require('polychrome.config.default'))`.
+
+==============================================================================
 4. Supported Colorspaces                              *polychrome-colorspaces*
 
 Currently, `polychrome.nvim` supports the following colorspaces:
@@ -746,7 +768,185 @@ have already been defined:
 <
 
 ==============================================================================
-9. Advanced Usage                                  *polychrome-advanced-usage*
+9. Palettes                                               *polychrome-palette*
+
+For convenience, `polychrome.nvim` provides a `Palette` object that allows you
+to make quick modification to many colors at once. Palettes provide the most
+utility when you want to make variations on an existing set of colors, such as
+dimmer or brighter versions of your main palette, or hue-shifting the entire
+palette in one direction.
+
+Here's a quick example of how to use palettes:
+
+>lua
+    local rgb = require('polychrome.color.rgb')
+    local oklch = require('polychrome.color.oklch')
+    local Palette = require('polychrome.palette')
+
+    local main = Palette.new({
+	bg = rgb(18, 18, 18),
+	error = rgb(240, 144, 144),
+	success = rgb(144, 240, 144),
+    })
+
+    -- apply a +0.1 lightness offset to the entire palette
+    -- using the Oklch colorspace
+    local bright = main + oklch(0.1, 0, 0)
+
+    -- multiply the chroma by 1.3x
+    local exagerrated = main * oklch(1, 1.3, 1)
+
+    print(main.bg) -- '#181818'
+    print(bright.bg) -- '#414141'
+
+    print(main.error) -- '#f09090'
+    print(bright.error) -- '#ffbbb9'
+
+    print(main.success) -- '#90f090'
+    print(exagerrated.success) -- '#72f776'
+<
+
+You can add, subtract, multiply, and divide a palette by any color, and it
+will return a new palette with that modification applied using the colorspace of
+the supplied color.
+
+==============================================================================
+9. Live preview mode                                 *polychrome-live-preview*
+
+`polychrome.nvim` includes a live preview mode that vastly streamlines the
+process of creating a colorscheme. To start the live preview mode, run
+`:Polychrome preview start`, or `require('polychrome.preview').start()` from a
+Lua context.
+
+When enabled, several things happen:
+
+    * The contents of the current buffer are run as a lua module
+    * If a colorscheme definition is present in the buffer, it's automatically
+      captured
+    * The `ColorSchemePre` autocommand fires
+    * The captured colorscheme is applied to the buffer
+    * The `ColorScheme` autocommand fires
+    * Every highlight group name found in the buffer is highlighted with that
+      group (ex: every occurence of the string "Comment" in the buffer is
+      highlighted with the `Comment` highlight group)
+
+Additionally, diagnostics are created for any common issues or errors found in
+the colorscheme definition. This creates a very tight feedback loop as you add
+and tweak your highlights, and you can immediately see the effects of each
+change as you make them.
+
+When previewing, the current file is reloaded automatically via autocmd
+(specifically `TextChanged`, `TextChangedI`, `TextChangedP`, and
+`TextChangedT`), and throttles reloads to every 500ms by default, shared across
+the autocommands.
+
+You can deactivate the live editing mode with `:Polychrome preview stop`, or
+`require('polychrome.preview').stop()` from a Lua context.
+
+If some 3rd party plugins aren't reloading their highlights while in live
+preview mode, check out |polychrome-third-party-plugin-live-preview| to make
+sure you have your integrations set up properly.
+
+==============================================================================
+10. Commands                               *:Polychrome* *polychrome-commands*
+
+A few user commands are automatically registered in order to make colorscheme
+creation easier.
+
+                             *:Polychrome_preview* *:Polychrome_preview_start*
+:Polychrome preview [start] ~
+
+Start the live preview mode, via the current buffer. See
+|polychrome-live-preview| for more info.
+
+The `start` argument is optional, so calling `:Polychrome preview` without an
+argument is the same as passing `start`.
+
+                                                   *:Polychrome_preview_stop*
+:Polychrome preview stop ~
+
+Stop the live preview mode.
+
+                          *:Polychrome_template* *:Polychrome_template_theme*
+:Polychrome template {name} ~
+
+Load a template into the current buffer.
+
+The `name` argument decides what template to load, and the loaded template
+will be inserted at the beginning of the current buffer. Opening a blank
+buffer and running this command makes it easy to get started quickly without
+needing to add the boilerplate yourself.
+
+Here are all of the currently available templates:
+
+    * `theme` - An empty theme definition, with all the most common highlights
+	      included as comments.
+
+==============================================================================
+12. OSC Support                                               *polychrome-osc*
+
+"Operating System Command" (or "OSC") codes are escape sequences that a
+program can use to directly communicate with the terminal emulator being used
+for the current session. Programs can use them to query the capabilities of
+your terminal emulator, and the terminal emulators themselves can also
+pre-emptively advertise their capabilities or push changed values immediately
+to child processes. There are many different OSC commands available, and not
+all of them are supported by all terminal emulators.
+
+Some of the commonly supported OSC commands allow you to query the values of
+certain color values of your terminal:
+
+* OSC 4 - ANSI palette colors, by palette index (0-255)
+* OSC 10 - default terminal foreground color
+* OSC 11 - default terminal background color
+* OSC 12 - default terminal cursor color
+* OSC 17 - default terminal selection background color
+* OSC 19 - default terminal selection foreground color
+
+Polychrome includes functionality to automatically query for and load these
+colors, if they exist and are supported by your terminal emulator. To enable
+them, use the `osc.enable` option in |polychrome-config|.
+
+By their nature, these highlight groups cannot be queried instantly, and on
+most systems, defining and applying a colorscheme will happen before
+polychrome has received the OSC response. For this reason, if you've enabled
+OSC highlight groups, polychrome will reload the colorscheme automatically at
+least once (and possibly more) after the OSC responses have been received.
+Whenever an OSC response is received, polychrome will queue a call to reload
+the colorscheme. This call is debounced, so the initial call will start a
+timer, and any consecutive reload requests within a certain window (defined in
+`osc.debounce_ms` in |polychrome-config|) will restart the timer. When the
+timer expires, the colorscheme will be reloaded via `:colorscheme <name>`.
+
+See |polychrome-config| for the default configuration.
+
+==============================================================================
+13. Autotransparency                             *polychrome-autotransparency*
+
+If you enjoy using transparency on your terminal emulator, you may often find
+that fullscreen programs like Neovim are not rendered like you would expect.
+The most common problem manifests when your terminal background and the
+background of a cell are the same color, but your terminal emulator calculates
+the transparency of both separately, which results in the background of Neovim
+appearing as a transparency layer on top of the transparent terminal
+background. In effect, the transparency is applied twice.
+
+Polychrome has an option to mitigate this, called `autotransparency`. When
+enabled, polychrome will automatically detect the background color of your
+terminal and compare it with the background color of certain highlight groups.
+If the backgrounds are the same color, the highlight background color will
+be automatically removed, making the background fully transparent. Thus, you
+no longer have 2 layers of transparency being applied, only one.
+
+However, when the backgrounds do not match, polychrome will apply the
+highlight as usual, meaning other users will still see your intended
+background color, even if their default terminal background is not the same or
+they are not using transparency.
+
+See |polychrome-config| for the default configuration.
+
+==============================================================================
+14. Advanced Usage                                 *polychrome-advanced-usage*
 
 For certain more complex scenarios, there are a few handy tricks that can make
 your colorscheme definition a lot cleaner.
@@ -852,6 +1052,11 @@ automatically reload.
     theme:apply()
 <
 
+Neovim automatically sets the value of `vim.o.background` based on the
+detected background color of your terminal, so using this option to drive your
+light/dark colorscheme variants means that the correct option will be
+automatically chosen without any additional manual configuration.
+
 
                                                   *polychrome-custom-variants*
 Other colorscheme variants ~
@@ -947,78 +1152,5 @@ would not work with live preview:
 	},
     }
 <
-
-==============================================================================
-10. Live preview mode                                *polychrome-live-preview*
-
-`polychrome.nvim` includes a live preview mode that vastly streamlines the
-process of creating a colorscheme. To start the live preview mode, run
-`:Polychrome preview start`, or `require('polychrome.preview').start()` from a
-Lua context.
-
-When enabled, several things happen:
-
-    * The contents of the current buffer are run as a lua module
-    * If a colorscheme definition is present in the buffer, it's automatically
-      captured
-    * The `ColorSchemePre` autocommand fires
-    * The captured colorscheme is applied to the buffer
-    * The `ColorScheme` autocommand fires
-    * Every highlight group name found in the buffer is highlighted with that
-      group (ex: every occurence of the string "Comment" in the buffer is
-      highlighted with the `Comment` highlight group)
-
-Additionally, diagnostics are created for any common issues or errors found in
-the colorscheme definition. This creates a very tight feedback loop as you add
-and tweak your highlights, and you can immediately see the effects of each
-change as you make them.
-
-When previewing, the current file is reloaded automatically via autocmd
-(specifically `TextChanged`, `TextChangedI`, `TextChangedP`, and
-`TextChangedT`), and throttles reloads to every 500ms by default, shared across
-the autocommands.
-
-You can deactivate the live editing mode with `:Polychrome preview stop`, or
-`require('polychrome.preview').stop()` from a Lua context.
-
-If some 3rd party plugins aren't reloading their highlights while in live
-preview mode, check out |polychrome-third-party-plugin-live-preview| to make
-sure you have your integrations set up properly.
-
-==============================================================================
-11. Commands                               *:Polychrome* *polychrome-commands*
-
-A few user commands are automatically registered in order to make colorscheme
-creation easier.
-
-                             *:Polychrome_preview* *:Polychrome_preview_start*
-:Polychrome preview [start] ~
-
-Start the live preview mode, via the current buffer. See
-|polychrome-live-preview| for more info.
-
-The `start` argument is optional, so calling `:Polychrome preview` without an
-argument is the same as passing `start`.
-
-                                                   *:Polychrome_preview_stop*
-:Polychrome preview stop ~
-
-Stop the live preview mode.
-
-                          *:Polychrome_template* *:Polychrome_template_theme*
-:Polychrome template {name} ~
-
-Load a template into the current buffer.
-
-The `name` argument decides what template to load, and the loaded template
-will be inserted at the beginning of the current buffer. Opening a blank
-buffer and running this command makes it easy to get started quickly without
-needing to add the boilerplate yourself.
-
-Here are all of the currently available templates:
-
-    * `theme` - An empty theme definition, with all the most common highlights
-	      included as comments.
-
 
  vim:tw=78:ts=8:noet:ft=help:norl:

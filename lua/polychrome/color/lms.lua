@@ -12,6 +12,7 @@ local LMS = {
 LMS.__index = LMS
 setmetatable(LMS, Color)
 
+LMS.__tostring = Color.__tostring
 LMS.__unm = Color.__unm
 LMS.__eq = Color.__eq
 LMS.__add = Color.__add

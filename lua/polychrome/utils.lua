@@ -18,6 +18,14 @@ function M.round(n)
     return n % 1 >= 0.5 and math.ceil(n) or math.floor(n)
 end
 
+---@param a number
+---@param b number
+---@param epsilon number?
+function M.roughly_equal(a, b, epsilon)
+    epsilon = epsilon or 1e-4
+    return math.abs(a - b) <= epsilon
+end
+
 --- Clamp a value to a specific range.
 ---@param value number
 ---@param bottom number?
@@ -234,6 +242,20 @@ function M.get_map_keys(tbl)
     end
 
     return keys
+end
+
+---@param checking table The table to check
+---@param meta table The metatable to look for
+---@return boolean Does the checked table inherit from the metatable?
+function M.has_metatable(checking, meta)
+    while checking ~= nil do
+        checking = getmetatable(checking)
+        if checking == meta then
+            return true
+        end
+    end
+
+    return false
 end
 
 return M

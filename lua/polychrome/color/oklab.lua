@@ -42,6 +42,7 @@ function Oklab:from_parent(parent)
     return self:new(lab)
 end
 
+Oklab.__tostring = Color.__tostring
 Oklab.__unm = Color.__unm
 Oklab.__eq = Color.__eq
 Oklab.__add = Color.__add

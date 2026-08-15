@@ -41,6 +41,7 @@ function lRGB._from_lms_naive(self, parent)
     return self:new(lrgb)
 end
 
+lRGB.__tostring = Color.__tostring
 lRGB.__unm = Color.__unm
 lRGB.__eq = Color.__eq
 lRGB.__add = Color.__add

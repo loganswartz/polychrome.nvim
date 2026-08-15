@@ -31,6 +31,7 @@ function CIEXYZ:to_parent()
     return self:get_parent_gamut():new(lms:transpose()[1])
 end
 
+CIEXYZ.__tostring = Color.__tostring
 CIEXYZ.__unm = Color.__unm
 CIEXYZ.__eq = Color.__eq
 CIEXYZ.__add = Color.__add
