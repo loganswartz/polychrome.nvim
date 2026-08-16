@@ -9,6 +9,11 @@ local matrices = require("polychrome.color.math.matrices")
 local CIEXYZ = {
     __type = "ciexyz",
     components = { "X", "Y", "Z" },
+    ranges = {
+        X = { 0, 100 },
+        Y = { 0, 105 },
+        Z = { 0, 110 },
+    },
 }
 CIEXYZ.__index = CIEXYZ
 setmetatable(CIEXYZ, Color)

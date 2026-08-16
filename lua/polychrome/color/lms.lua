@@ -8,6 +8,11 @@ local Color = require("polychrome.color.base")
 local LMS = {
     __type = "lms",
     components = { "L", "M", "S" },
+    ranges = {
+        L = { 0, 100 },
+        M = { 0, 105 },
+        S = { 0, 110 },
+    },
 }
 LMS.__index = LMS
 setmetatable(LMS, Color)

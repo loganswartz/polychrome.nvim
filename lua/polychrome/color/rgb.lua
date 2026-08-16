@@ -12,6 +12,11 @@ local gamma = require("polychrome.color.math.gamma")
 local M = {
     __type = "rgb",
     components = { "r", "g", "b" },
+    ranges = {
+        r = { 0, 255 },
+        g = { 0, 255 },
+        b = { 0, 255 },
+    },
 }
 M.__index = M
 setmetatable(M, Color)

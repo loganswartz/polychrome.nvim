@@ -39,6 +39,7 @@ local ANCESTOR_CACHE = {}
 ---@field [string] number
 ---@field __type string
 ---@field components string[] The components of the gamut in the order they are specified.
+---@field ranges {[string]: [number, number]} The components of the gamut in the order they are specified.
 ---@overload fun(self: Color, ...: number): Color Create a new instance of the class.
 ---@operator unm(): Color Negate the color
 ---@operator add(number|Color): Color Add two colors
@@ -144,6 +145,50 @@ function Color.from(self_or_value, value)
     return color
 end
 
+---Generate a table of normalized (0-1) component values for the color.
+---@return number[]
+function Color:normalize()
+    local values = {}
+
+    for _, key in ipairs(self.components) do
+        local range = assert(self.ranges[key], "No range defined for component " .. key)
+        values[key] = (self[key] * (range[2] - range[1])) + range[1]
+    end
+
+    return values
+end
+
+---Generate a table of denormalized component values for the color.
+---
+---The denormalized values are scaled to the appropriate range for the color gamut.
+---@return number[]
+function Color:denormalize()
+    local values = {}
+
+    for _, key in ipairs(self.components) do
+        local range = assert(self.ranges[key], "No range defined for component " .. key)
+        values[key] = (self[key] - range[1]) / (range[2] - range[1])
+    end
+
+    return values
+end
+
+---Create a new instance of the class from normalized (0-1) values.
+---
+---This will scale the values to the appropriate range for the color gamut.
+---@param first table|number
+---@param ... number
+function Color:from_normalized(first, ...)
+    local new = self:new(first, ...)
+
+    for _, key in ipairs(self.components) do
+        local range = assert(self.ranges[key], "No range defined for component " .. key)
+        new[key] = (new[key] * (range[2] - range[1])) + range[1]
+    end
+
+    return new
+end
+
 ---Convert the color to a `<number of components> x 1` matrix.
 ---@return Matrix
 function Color:to_matrix()
@@ -152,6 +197,19 @@ function Color:to_matrix()
     local rows = {}
     for _, key in ipairs(self.components) do
         table.insert(rows, self[key])
+    end
+
+    return matrix(rows)
+end
+
+---Convert the color to a `<number of components> x 1` matrix.
+---@return Matrix
+function Color:to_normalized_matrix()
+    local matrix = require("polychrome.matrix")
+
+    local rows = {}
+    for _, value in pairs(self:normalize()) do
+        table.insert(rows, value)
     end
 
     return matrix(rows)
@@ -435,9 +493,8 @@ function Color:__eq(other)
     other = other:to(self:get_type())
 
     for _, key in ipairs(self.components) do
-        -- scale-aware epsilon
-        local order = math.log((self[key] + other[key]) / 2, 10)
-        local epsilon = math.pow(10, order - 4)
+        local range = self.ranges[key]
+        local epsilon = (range[2] - range[1]) * 1e-3
 
         if not utils.roughly_equal(self[key], other[key], epsilon) then
             return false

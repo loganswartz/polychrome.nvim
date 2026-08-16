@@ -811,7 +811,7 @@ will return a new palette with that modification applied using the colorspace of
 the supplied color.
 
 ==============================================================================
-9. Live preview mode                                 *polychrome-live-preview*
+10. Live preview mode                                *polychrome-live-preview*
 
 `polychrome.nvim` includes a live preview mode that vastly streamlines the
 process of creating a colorscheme. To start the live preview mode, run
@@ -848,7 +848,7 @@ preview mode, check out |polychrome-third-party-plugin-live-preview| to make
 sure you have your integrations set up properly.
 
 ==============================================================================
-10. Commands                               *:Polychrome* *polychrome-commands*
+12. Commands                               *:Polychrome* *polychrome-commands*
 
 A few user commands are automatically registered in order to make colorscheme
 creation easier.
@@ -883,7 +883,7 @@ Here are all of the currently available templates:
 	      included as comments.
 
 ==============================================================================
-12. OSC Support                                               *polychrome-osc*
+13. OSC Support                                               *polychrome-osc*
 
 "Operating System Command" (or "OSC") codes are escape sequences that a
 program can use to directly communicate with the terminal emulator being used
@@ -921,7 +921,7 @@ timer expires, the colorscheme will be reloaded via `:colorscheme <name>`.
 See |polychrome-config| for the default configuration.
 
 ==============================================================================
-13. Autotransparency                             *polychrome-autotransparency*
+14. Autotransparency                             *polychrome-autotransparency*
 
 If you enjoy using transparency on your terminal emulator, you may often find
 that fullscreen programs like Neovim are not rendered like you would expect.
@@ -946,7 +946,7 @@ they are not using transparency.
 See |polychrome-config| for the default configuration.
 
 ==============================================================================
-14. Advanced Usage                                 *polychrome-advanced-usage*
+15. Advanced Usage                                 *polychrome-advanced-usage*
 
 For certain more complex scenarios, there are a few handy tricks that can make
 your colorscheme definition a lot cleaner.

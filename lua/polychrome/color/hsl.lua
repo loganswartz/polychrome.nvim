@@ -9,6 +9,11 @@ local utils = require("polychrome.utils")
 local HSL = {
     __type = "hsl",
     components = { "h", "s", "l" },
+    ranges = {
+        h = { 0, 360 },
+        s = { 0, 100 },
+        l = { 0, 100 },
+    },
 }
 
 HSL.__index = HSL

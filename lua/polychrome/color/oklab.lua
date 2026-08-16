@@ -10,6 +10,11 @@ local matrices = require("polychrome.color.math.matrices")
 local Oklab = {
     __type = "oklab",
     components = { "L", "a", "b" },
+    ranges = {
+        L = { 0, 1 },
+        a = { -0.4, 0.4 },
+        b = { -0.4, 0.4 },
+    },
 }
 Oklab.__index = Oklab
 setmetatable(Oklab, Color)

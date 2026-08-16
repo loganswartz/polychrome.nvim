@@ -9,6 +9,11 @@ local matrices = require("polychrome.color.math.matrices")
 local lRGB = {
     __type = "lrgb",
     components = { "lr", "lg", "lb" },
+    ranges = {
+        lr = { 0, 1 },
+        lg = { 0, 1 },
+        lb = { 0, 1 },
+    },
 }
 lRGB.__index = lRGB
 setmetatable(lRGB, Color)

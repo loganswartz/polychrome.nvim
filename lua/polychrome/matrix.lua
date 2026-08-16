@@ -195,8 +195,6 @@ LICENSE
 ---@field tostring fun(m1: Matrix, formatstr: string): string
 ---@field transpose fun(m1: Matrix): Matrix
 ---@field type fun(m1: Matrix): string
-
----@type Matrix
 local matrix = { _TYPE = 'module', _NAME = 'matrix', _VERSION = '0.2.11.20120416' }
 
 -- access to the metatable we set at the end of the file

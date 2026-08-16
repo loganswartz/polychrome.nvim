@@ -13,9 +13,13 @@ end
 
 --- Round a number to the nearest whole number.
 ---@param n number
+---@param places number?
 ---@return number
-function M.round(n)
-    return n % 1 >= 0.5 and math.ceil(n) or math.floor(n)
+function M.round(n, places)
+    places = places or 0
+    local scale = 10 ^ places
+
+    return math.floor((n + 0.5) * scale) / scale
 end
 
 ---@param a number

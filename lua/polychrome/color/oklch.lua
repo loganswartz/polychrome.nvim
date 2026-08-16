@@ -9,6 +9,11 @@ local utils = require("polychrome.utils")
 local Oklch = {
     __type = "oklch",
     components = { "L", "c", "h" },
+    ranges = {
+        L = { 0, 1 },
+        c = { 0, 0.4 },
+        h = { 0, 360 },
+    },
 }
 Oklch.__index = Oklch
 setmetatable(Oklch, Color)
