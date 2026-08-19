@@ -489,19 +489,30 @@ function Color:__call(...)
     return self:new(...)
 end
 
+---Compare 2 colors by their distance from each other, using Oklab.
+---
+---If the difference is less than 0.001 (Oklab units), the colors are
+---considered equal.
+---@param other Color
+---@return boolean
 function Color:__eq(other)
-    other = other:to(self:get_type())
+    return self:distance_from(other) <= 1e-3
+end
 
-    for _, key in ipairs(self.components) do
-        local range = self.ranges[key]
-        local epsilon = (range[2] - range[1]) * 1e-3
+---Get the distance between this and another color, using Oklab.
+---
+---This is currently the best measure we have for how "different" two colors
+---are.
+---@param other Color
+---@return number
+function Color:distance_from(other)
+    local a = self:to("oklab")
+    local b = other:to("oklab")
+    assert(a and b, "should be able to convert both colors to Oklab")
 
-        if not utils.roughly_equal(self[key], other[key], epsilon) then
-            return false
-        end
-    end
+    local distance = utils.cartesian_distance(a:values(), b:values())
 
-    return true
+    return distance
 end
 
 ---Negate the color, returning a new color with each channel negated

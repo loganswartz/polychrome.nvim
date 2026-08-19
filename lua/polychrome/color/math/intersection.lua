@@ -8,9 +8,9 @@ M.FLT_MAX = 2 ^ 1023.9999999999999
 -- Finds the maximum saturation possible for a given hue that fits in sRGB
 -- Saturation here is defined as S = C/L
 -- a and b must be normalized so a^2 + b^2 == 1
----@param a float
----@param b float
----@return float
+---@param a number
+---@param b number
+---@return number
 function M.compute_max_saturation(a, b)
     -- Max saturation will be when one of r, g or b goes below zero.
 
@@ -78,14 +78,14 @@ function M.compute_max_saturation(a, b)
 end
 
 ---@class LC
----@field L float
----@field C float
+---@field L number
+---@field C number
 
 -- finds L_cusp and C_cusp for a given hue
 -- a and b must be normalized so a^2 + b^2 == 1
 
----@param a float
----@param b float
+---@param a number
+---@param b number
 ---@return LC
 function M.find_cusp(a, b)
     -- First, find the maximum saturation (saturation S = C/L)
@@ -95,8 +95,8 @@ function M.find_cusp(a, b)
     local lRGB = require('polychrome.color.lrgb')
 
     -- Convert to linear sRGB to find the first point where at least one of r,g or b >= 1:
-    local lms = Oklab(1, S_cusp * a, S_cusp * b):to_parent()
-    local rgb_at_max = lRGB:_from_lms_naive(lms)
+    local xyz = Oklab(1, S_cusp * a, S_cusp * b):to_parent()
+    local rgb_at_max = lRGB:_from_ciexyz_naive(xyz)
     local L_cusp = utils.nroot(1 / math.max(math.max(rgb_at_max.lr, rgb_at_max.lg), rgb_at_max.lb))
     local C_cusp = L_cusp * S_cusp
 
@@ -107,13 +107,13 @@ end
 -- L = L0 * (1 - t) + t * L1
 -- C = t * C1
 -- a and b must be normalized so a^2 + b^2 == 1
----@param a float
----@param b float
----@param L1 float
----@param C1 float
----@param L0 float
+---@param a number
+---@param b number
+---@param L1 number
+---@param C1 number
+---@param L0 number
 ---@param iterations number|nil
----@return float
+---@return number
 function M.find_gamut_intersection(a, b, L1, C1, L0, iterations)
     -- Find the cusp of the gamut triangle
     local cusp = M.find_cusp(a, b)

@@ -30,6 +30,87 @@ function M.roughly_equal(a, b, epsilon)
     return math.abs(a - b) <= epsilon
 end
 
+---Convert Cartesian coordinates to polar coordinates
+---@param first number|table The lightness value, or a table of values
+---@param ... number
+---@return number, number, number
+function M.cartesian_to_polar(first, ...)
+    local args = first
+    local rest = { ... }
+    if type(args) == "number" then
+        args = vim.iter({ { first }, rest }):flatten():totable()
+    end
+
+    local L = args[1]
+    local a = args[2]
+    local b = args[3]
+    local epsilon = 1e-8
+
+    local c = math.sqrt((a ^ 2) + (b ^ 2))
+    local _h = ((math.atan2(b, a) * 180 / math.pi) + 360) % 360
+    local h = c < epsilon and 0 or _h
+
+    return L, c, h
+end
+
+---Convert polar coordinates to Cartesian coordinates
+---@param first number|table The lightness value, or a table of values
+---@param ... number
+---@return number, number, number
+function M.polar_to_cartesian(first, ...)
+    local args = first
+    local rest = { ... }
+    if type(args) == "number" then
+        args = vim.iter({ { first }, rest }):flatten():totable()
+    end
+
+    local L = args[1]
+    local c = args[2]
+    local h = args[3]
+
+    local radius = h * math.pi / 180
+    local a = c * math.cos(radius)
+    local b = c * math.sin(radius)
+
+    return L, a, b
+end
+
+---Calculate the distance between two Cartesian coordinates.
+---
+---If scales is not supplied, then it assumes all axes are the same scale. If
+---scales is supplied, the distance calculation is performed with those axes
+---scaled proportionally.
+---
+---This is often useful to calculate if two points are sufficiently close to
+---one another, i.e. does one sit within a circle/sphere/hypersphere of a
+---certain radius, centered on the other point.
+---@param a number[]
+---@param b number[]
+---@param scales number[]?
+---@return number
+function M.cartesian_distance(a, b, scales)
+    assert(#a == #b and (scales == nil or #a == #scales), "Coordinates must be of the same dimension")
+
+    local sum = 0
+
+    for idx, _ in ipairs(a) do
+        local scale = scales ~= nil and scales[idx] or 1
+        local distance = (b[idx] - a[idx]) / scale
+
+        sum = sum + (distance ^ 2)
+    end
+
+    return math.sqrt(sum)
+end
+
+---Calculate the distance between two polar coordinates
+---@param a number[]
+---@param b number[]
+---@return number
+function M.polar_distance(a, b)
+    return M.cartesian_distance({ M.polar_to_cartesian(a) }, { M.polar_to_cartesian(b) })
+end
+
 --- Clamp a value to a specific range.
 ---@param value number
 ---@param bottom number?

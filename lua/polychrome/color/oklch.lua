@@ -23,20 +23,12 @@ function Oklch.get_parent_gamut()
 end
 
 function Oklch:to_parent()
-    return self:get_parent_gamut():new({
-        L = self.L,
-        a = self.c * math.cos(self.h * math.pi / 180),
-        b = self.c * math.sin(self.h * math.pi / 180),
-    })
+    return self:get_parent_gamut():new(utils.polar_to_cartesian(self:values()))
 end
 
 ---@param parent Oklab
 function Oklch:from_parent(parent)
-    return self:new({
-        L = parent.L,
-        c = math.sqrt(math.pow(parent.a, 2) + math.pow(parent.b, 2)),
-        h = utils.clamp(math.atan2(parent.b, parent.a) * 180 / math.pi, 0, 360),
-    })
+    return self:new(utils.cartesian_to_polar(parent:values()))
 end
 
 Oklch.__tostring = Color.__tostring

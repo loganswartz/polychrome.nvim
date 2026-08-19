@@ -1,5 +1,13 @@
 local Color = require("polychrome.color.base")
 local matrices = require("polychrome.color.math.matrices")
+local matrix = require("polychrome.matrix")
+
+local CIEXYZ_to_LMS = matrix({
+    { 0.7328, 0.4296, -0.16239999999998 },
+    { -0.7036, 1.6975, 0.0060999999999971 },
+    { 0.003, 0.013599999999999, 0.9834 },
+})
+local LMS_to_CIEXYZ = CIEXYZ_to_LMS:invert()
 
 ---@class CIEXYZ : Color
 ---@field __type 'ciexyz'
@@ -25,13 +33,13 @@ end
 ---@param parent LMS
 function CIEXYZ:from_parent(parent)
     -- convert to cone response
-    local xyz = matrices.LMS_to_XYZ:mul(parent:to_matrix())
+    local xyz = LMS_to_CIEXYZ:mul(parent:to_matrix())
 
     return self:new(xyz:transpose()[1])
 end
 
 function CIEXYZ:to_parent()
-    local lms = matrices.XYZ_to_LMS:mul(self:to_matrix())
+    local lms = CIEXYZ_to_LMS:mul(self:to_matrix())
 
     return self:get_parent_gamut():new(lms:transpose()[1])
 end

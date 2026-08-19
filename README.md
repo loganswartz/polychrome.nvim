@@ -312,6 +312,26 @@ eval $(luarocks path)
 
 Then, run `luarocks test --local` in the root of the repo.
 
+Some platforms (like homebrew on macOS) don't provide Lua 5.1 packages anymore,
+so installing `luarocks` will use a later version of Lua that doesn't work out
+of the box with this test setup. In those situations, you can tell luarocks to
+use LuaJIT instead:
+
+```shell
+brew install luajit
+brew install luarocks
+
+eval $(luarocks --lua-dir=$(brew --prefix)/opt/luajit path)
+luarocks --lua-dir=$(brew --prefix)/opt/luajit test --local
+```
+
+You also need the `color-space` package installed globally via NPM, as this is
+the reference used to generate the test data. Install with:
+
+```shell
+npm install -g color-space
+```
+
 If you want LSP hints while working on tests, install and configure these
 plugins like so (example assumes you're using `lazy.nvim`):
 
