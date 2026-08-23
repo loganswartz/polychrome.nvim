@@ -159,8 +159,10 @@ sRGB ~
 
 sRGB, also known as gamma-corrected RGB, has red, green, and blue components
 that range from 0 to 255. The values have gamma-correction baked in, which
-solves some problems, and creates some others. This is the colorspace most
-people are thinking of when they think "RGB".
+solves some perceptual problems but causes difficulties when converting to
+other colorspaces. For this reason, converting to other colorspaces requires
+converting to lRGB first (this is handled automatically). This is the
+colorspace most people are thinking of when they hear "RGB".
 
 >lua
     -- Neovim natively supports hex strings, so no helper is needed
@@ -193,6 +195,48 @@ colorspaces much simpler.
     local red = lrgb({ 1, 0, 0 })
     -- or
     local red = lrgb({ lr = 1, lg = 0, lb = 0 })
+<
+
+                                                  *polychrome-colorspaces-p3*
+P3 ~
+
+P3, also known as Display P3, is similar to sRGB but has a larger number of
+total colors. Apple uses this as the default colorspace on Macs. sRGB has red,
+green, and blue components that are in the range 0-255, but P3 values are
+decimals in the range 0.0 - 1.0. The values have gamma-correction baked in
+(like sRGB), which solves some perceptual problems but causes difficulties
+when converting to other colorspaces. For this reason, converting to other
+colorspaces requires converting to linear P3 first (this is handled
+automatically). This is the colorspace most people are thinking of when they
+hear "P3".
+
+>lua
+    local p3 = require('polychrome.color.p3')
+
+    local red = p3(1, 0, 0)
+    -- or
+    local red = p3({ 1, 0, 0 })
+    -- or
+    local red = p3({ r = 1, g = 0, b = 0 })
+<
+
+                                           *polychrome-colorspaces-linear-p3*
+Linear P3 ~
+
+Linear P3, also known as non-gamma-corrected Display P3, is the P3 equivalent
+of lRGB. Unlike sRGB and lRGB which have different value ranges, P3 and Linear
+P3 values are both decimals in the range 0.0 - 1.0. Linear P3 additionally has
+no gamma correction. The lack of gamma correction makes conversion to other
+colorspaces much simpler.
+
+>lua
+    local linear_p3 = require('polychrome.color.linear_p3')
+
+    local red = linear_p3(1, 0, 0)
+    -- or
+    local red = linear_p3({ 1, 0, 0 })
+    -- or
+    local red = linear_p3({ r = 1, g = 0, b = 0 })
 <
 
                                                  *polychrome-colorspaces-hsl*
@@ -292,7 +336,6 @@ There are countless numbers of other colorspaces that aren't currently
 supported, and many of them never will be. However, there are a few
 colorspaces that will hopefully be supported in the future:
 
-    * `P3`
     * `CIELAB`
     * `CIELch`
     * `Okhsl`

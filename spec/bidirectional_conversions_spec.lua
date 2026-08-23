@@ -1,5 +1,6 @@
 local name_mappings = {
     ciexyz = "xyz",
+    linear_p3 = "p3-linear",
 }
 
 ---@class GenerateCasesOpts

@@ -33,7 +33,7 @@ function M.gamut_clip_preserve_chroma(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    -- convert back to LMS
+    -- convert back to CIEXYZ
     local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to("ciexyz")
 
     return require("polychrome.color.lrgb"):_from_ciexyz_naive(clipped)
@@ -62,7 +62,7 @@ function M.gamut_clip_project_to_0_5(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    -- convert back to LMS
+    -- convert back to CIEXYZ
     local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to("ciexyz")
 
     return require("polychrome.color.lrgb"):_from_ciexyz_naive(clipped)
@@ -95,7 +95,7 @@ function M.gamut_clip_project_to_L_cusp(rgb)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    -- convert back to LMS
+    -- convert back to CIEXYZ
     local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to("ciexyz")
 
     return require("polychrome.color.lrgb"):_from_ciexyz_naive(clipped)
@@ -128,7 +128,7 @@ function M.gamut_clip_adaptive_L0_0_5(rgb, alpha)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    -- convert back to LMS
+    -- convert back to CIEXYZ
     local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to("ciexyz")
 
     return require("polychrome.color.lrgb"):_from_ciexyz_naive(clipped)
@@ -166,7 +166,7 @@ function M.gamut_clip_adaptive_L0_L_cusp(rgb, alpha)
     local L_clipped = L0 * (1 - t) + t * L
     local C_clipped = t * C
 
-    -- convert back to LMS
+    -- convert back to CIEXYZ
     local clipped = Oklab:new(L_clipped, C_clipped * a_, C_clipped * b_):to("ciexyz")
 
     return require("polychrome.color.lrgb"):_from_ciexyz_naive(clipped)

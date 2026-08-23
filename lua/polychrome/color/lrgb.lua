@@ -44,9 +44,9 @@ end
 
 ---@param parent CIEXYZ
 function lRGB.from_parent(self, parent)
-    return self:_from_ciexyz_naive(parent)
+    local naive = self:_from_ciexyz_naive(parent)
 
-    -- return require("polychrome.color.math.clip").gamut_clip_preserve_chroma(naive)
+    return require("polychrome.color.math.clip").gamut_clip_preserve_chroma(naive)
 end
 
 ---Naively convert from Oklab to lRGB
