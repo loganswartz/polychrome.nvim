@@ -257,6 +257,27 @@ perceptual accuracy.
     local red = hsl({ h = 0, s = 100, l = 50 })
 <
 
+                                                *polychrome-colorspaces-cmyk*
+CMYK ~
+
+CMYK is a subtractive colorspace, as opposed to most of the colorspaces
+supported by polychrome, which are additive. This is primarily useful for
+modeling colors on printed media, because inks and paints work by absorbing
+all but one color, so mixing colors together causes more light to be absorbed,
+moving the perceived color closer to black. In contrast, light sources (like
+screens) emit the color directly, so adding colors together means more total
+light, thus moving the color closer to white.
+
+>lua
+    local cmyk = require('polychrome.color.cmyk')
+
+    local red = cmyk(0, 100, 100, 0)
+    -- or
+    local red = cmyk({ 0, 100, 100, 0 })
+    -- or
+    local red = cmyk({ c = 0, m = 100, y = 100, k = 0 })
+<
+
                                                *polychrome-colorspaces-oklab*
 Oklab ~
 
