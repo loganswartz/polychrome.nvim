@@ -294,39 +294,19 @@ function M.sign(x)
 end
 
 function M.get_plugin_root()
+    -- Tests in busted do not have the same lua PATHs as running normally in Neovim
+    -- This means some PATH magic (module autodiscovery) doesn't work normally
+    -- When testing, we manually inject the plugin root instead
+    if M.PLUGIN_ROOT then
+        return M.PLUGIN_ROOT
+    end
+
     local root = debug.getinfo(2, "S").source:sub(2)
     return root:match("(.*/)")
 end
 
 function M.isNaN(x)
     return x ~= x
-end
-
---- Get the keys of a table that are contiguous integer keys
----@param tbl table
-function M.get_list_keys(tbl)
-    local keys = {}
-
-    for k, _ in ipairs(tbl) do
-        table.insert(keys, k)
-    end
-
-    return keys
-end
-
---- Get the keys of a table that are not contiguous integer keys
----@param tbl table
-function M.get_map_keys(tbl)
-    local keys = {}
-    local list_keys = M.get_list_keys(tbl)
-
-    for k, _ in pairs(tbl) do
-        if not vim.tbl_contains(list_keys, k) then
-            table.insert(keys, k)
-        end
-    end
-
-    return keys
 end
 
 ---@param checking table The table to check
@@ -341,6 +321,63 @@ function M.has_metatable(checking, meta)
     end
 
     return false
+end
+
+---@class FindSubmodulesOpts
+---@field exclude string[]?
+
+---Dynamically find all submodules in the given path
+---@param path string
+---@param opts FindSubmodulesOpts
+---@return table
+function M.find_submodules(path, opts)
+    opts = opts or {}
+    opts.exclude = opts.exclude or {}
+    table.insert(opts.exclude, "init")
+
+    local parent_path = string.gsub(path, "%.", "/")
+    local found = {}
+
+    local rtp = vim.opt.rtp:get()
+    -- Allow autodiscovery to work in tests
+    table.insert(rtp, M.get_plugin_root())
+
+    for _, dir in ipairs(rtp) do
+        local raw_path = vim.fs.joinpath(dir, "/lua/", parent_path)
+
+        for name, _ in vim.fs.dir(raw_path) do
+            local module = name:gsub("%.lua$", "")
+
+            if not vim.tbl_contains(opts.exclude, module) then
+                table.insert(found, module)
+            end
+        end
+    end
+
+    return vim.iter(found):unique():totable()
+end
+
+---Dynamically import all submodules in the given path
+---@param path string
+---@param opts FindSubmodulesOpts
+---@return table
+function M.load_submodules(path, opts)
+    local submodules = M.find_submodules(path, opts)
+
+    return vim.iter(submodules):fold({}, function(t, v)
+        local ok, mod = pcall(require, path .. "." .. v)
+        if ok then
+            t[v] = mod
+        end
+        return t
+    end)
+end
+
+---Do not use.
+---
+---Monkeypatch some things so that PATH magic in tests works as expected.
+function M._setup_for_tests()
+    M.PLUGIN_ROOT = require("lfs").currentdir()
 end
 
 return M

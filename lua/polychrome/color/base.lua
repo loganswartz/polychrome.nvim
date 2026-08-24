@@ -146,7 +146,7 @@ function Color.from(self_or_value, value)
 end
 
 ---Generate a table of normalized (0-1) component values for the color.
----@return number[]
+---@return {[string]: number}
 function Color:normalize()
     local values = {}
 
@@ -161,7 +161,7 @@ end
 ---Generate a table of denormalized component values for the color.
 ---
 ---The denormalized values are scaled to the appropriate range for the color gamut.
----@return number[]
+---@return {[string]: number}
 function Color:denormalize()
     local values = {}
 

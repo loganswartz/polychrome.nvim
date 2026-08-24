@@ -160,21 +160,6 @@ function M.Colorscheme:_extend_with_func(func)
 
     -- this will serve as the global environment for the given function
     local lookup = setmetatable({
-        -- inject color system constructors so we don't have to import them
-        RGB = color.rgb,
-        rgb = color.rgb,
-        lRGB = color.lrgb,
-        lrgb = color.lrgb,
-        HSL = color.hsl,
-        hsl = color.hsl,
-        Oklab = color.oklab,
-        oklab = color.oklab,
-        Oklch = color.oklch,
-        oklch = color.oklch,
-        CIEXYZ = color.ciexyz,
-        ciexyz = color.ciexyz,
-        LMS = color.lms,
-        lms = color.lms,
         -- inject helper for group names that have special characters in them
         _ = register,
     }, {
@@ -182,7 +167,8 @@ function M.Colorscheme:_extend_with_func(func)
         -- existing groups from colorscheme.groups, or inject new ones
         __index = function(_, key)
             -- check _G first to allow using the standard globals
-            return _G[key] or register(key)
+            -- also inject colorspace functions so we don't have to import them
+            return _G[key] or require("polychrome.color")[key] or register(key)
         end,
     })
 

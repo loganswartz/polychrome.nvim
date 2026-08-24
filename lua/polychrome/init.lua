@@ -4,14 +4,12 @@ local commands = require("polychrome.commands")
 
 local M = {
     Colorscheme = colorscheme.Colorscheme,
-    rgb = color.rgb,
-    lrgb = color.lrgb,
-    hsl = color.hsl,
-    oklab = color.oklab,
-    oklch = color.oklch,
-    ciexyz = color.ciexyz,
-    lms = color.lms,
 }
+setmetatable(M, {
+    __index = function(_, value)
+        return color[value]
+    end,
+})
 
 commands.setup()
 

@@ -12,7 +12,10 @@ local name_mappings = {
 local function generate_cases(opts)
     opts = opts or {}
 
-    opts.spaces = opts.spaces or vim.tbl_keys(require("polychrome.color"))
+    local default_spaces = vim.tbl_keys(require("polychrome.color"))
+    assert(#default_spaces > 0, "Failed to autoload colorspaces!")
+
+    opts.spaces = opts.spaces or default_spaces
     opts.rgb_values = opts.rgb_values
         or {
             { 0, 0, 0 },
@@ -37,12 +40,17 @@ local function generate_cases(opts)
     assert(npm.code == 0, ("should be able to get npm prefix:\n%s"):format(npm.stderr))
     local npm_prefix = vim.trim(npm.stdout)
 
+    local color_space_index = vim.fs.joinpath(npm_prefix, "lib/node_modules/color-space/index.js")
+    if not vim.loop.fs_stat(color_space_index) then
+        assert(false, "Unable to find color-space index.js. Try running `npm install -g color-space`.")
+    end
+
     -- Generate test cases directly from color-space.io data
     local script = ([[
     async function run() {
         const data = %s;
 
-        const { default: space } = await import("%s/lib/node_modules/color-space/index.js");
+        const { default: space } = await import("%s");
 
         const results = [];
 
@@ -58,7 +66,7 @@ local function generate_cases(opts)
     }
 
     run();
-    ]]):format(vim.json.encode(opts), npm_prefix)
+    ]]):format(vim.json.encode(opts), color_space_index)
 
     local cmd = vim.system({ "node", "-" }, { text = true, stdin = true })
     cmd:write({ script })
@@ -83,8 +91,10 @@ local function generate_cases(opts)
 end
 
 describe("bi-directional color conversion", function()
-    local cases = generate_cases() or {}
+    -- patch some things so tests work as expected
+    require("polychrome.utils")._setup_for_tests()
 
+    local cases = generate_cases() or {}
     local colorspaces = require("polychrome.color")
 
     for _, case in ipairs(cases) do
