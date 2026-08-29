@@ -64,18 +64,7 @@ end
 ---Clone the palette
 ---@return Palette
 function Palette:clone()
-    local copy = self.new()
-    local colors = rawget(copy, "_colors")
-    local operations = rawget(copy, "_operations")
-
-    for k, v in pairs(rawget(self, "_colors")) do
-        colors[k] = v:clone()
-    end
-    for i, v in ipairs(rawget(self, "_operations")) do
-        table.insert(operations, i, v)
-    end
-
-    return copy
+    return vim.deepcopy(self)
 end
 
 ---Get an original, unaltered color from the palette
@@ -132,6 +121,8 @@ function Palette:__index(key)
     local own = rawget(self, "_colors")[key]
     if own == nil then
         return rawget(Palette, key)
+    elseif not require("polychrome.color.base").is_color(own) then
+        return own
     end
 
     local modified = own

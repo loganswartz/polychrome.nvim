@@ -1,5 +1,4 @@
 local state = require("polychrome.state")
-local color = require("polychrome.color")
 local diagnostics = require("polychrome.diagnostics")
 local utils = require("polychrome.utils")
 local make_config = require("polychrome.config").make_config
@@ -54,7 +53,7 @@ function M.Colorscheme.define(name, definition, config)
 
     -- if the live preview mode is active, this allows it to access the
     -- colorscheme directly without any complicated logic
-    if state.preview_is_active ~= nil then
+    if state.preview_is_active then
         state.preview_colorscheme = colorscheme
     end
 

@@ -477,12 +477,7 @@ end
 ---Clone the color
 ---@return Color
 function Color:clone()
-    local values = {}
-    for _, key in ipairs(self.components) do
-        table.insert(values, self[key])
-    end
-
-    return self:get_type():new(values)
+    return vim.deepcopy(self)
 end
 
 function Color:__call(...)
@@ -571,17 +566,18 @@ function Color.__div(left, right)
     end)
 end
 
-function Color.interpolate_linear(a, b, percentage)
-    local start = a:to("oklab")
-    local finish = b:to("oklab")
+function Color:interpolate(other, percentage)
+    local start = self:to("oklab")
+    assert(start, "should be able to convert to oklab")
+    local finish = other:to("oklab")
 
     local values = {}
     for _, key in ipairs(start.components) do
         values[key] = start[key] + ((finish[key] - start[key]) * percentage)
     end
-    local new = require("polychrome").oklab(values)
+    local new = require("polychrome.color").oklab(values)
 
-    return new:to(getmetatable(a))
+    return new:to(self:get_type())
 end
 
 function Color:__tostring()
