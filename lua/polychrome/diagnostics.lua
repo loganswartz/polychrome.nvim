@@ -156,7 +156,7 @@ local function ts_find_table_string_value(value)
     local found = {}
     for _, captures, _ in query:iter_matches(root, 0) do
         ---@type TSNode
-        local value_node = captures[1]
+        local value_node = captures[1][1]
         if value_node ~= nil then
             table.insert(found, to_range(value_node))
         end
@@ -189,7 +189,7 @@ local function ts_find_table_value(group, key)
     local found = {}
     for _, captures, _ in query:iter_matches(root, 0) do
         ---@type TSNode
-        local value_node = captures[3]
+        local value_node = captures[3][1]
         if value_node ~= nil then
             table.insert(found, to_range(value_node))
         end
