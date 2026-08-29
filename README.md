@@ -300,10 +300,11 @@ accurate translation.
 
 The testing setup is based on [this blog post](https://mrcjkb.dev/posts/2023-06-06-luarocks-test.html).
 
+## Luarocks
+
 Ensure you have `luarocks` and a version of `lua@5.1` installed. On
 Ubuntu/Debian/other distros, this should be as simple as installing `luarocks`
-via your package manager (I wasn't able to get this working on macOS when
-installing via homebrew).
+via your package manager.
 
 Additionally, your shell needs to be configured to be able to use `luarocks`.
 Something like this in your `.profile`/`.bashrc`/`.zshrc`/etc should be
@@ -315,25 +316,48 @@ eval $(luarocks path)
 
 Then, run `luarocks test --local` in the root of the repo.
 
-Some platforms (like homebrew on macOS) don't provide Lua 5.1 packages anymore,
-so installing `luarocks` will use a later version of Lua that doesn't work out
-of the box with this test setup. In those situations, you can tell luarocks to
-use LuaJIT instead:
+Some platforms (like homebrew on macOS) don't provide vanilla Lua 5.1 packages
+anymore, so installing `luarocks` will use a later version of Lua that doesn't
+work out of the box with this test setup. In those situations, you can tell
+luarocks to use LuaJIT instead:
 
 ```shell
 brew install luajit
 brew install luarocks
+```
 
+Without further environment modification, you can run tests with the following
+commands:
+
+```shell
 eval $(luarocks --lua-dir=$(brew --prefix)/opt/luajit path)
 luarocks --lua-dir=$(brew --prefix)/opt/luajit test --local
 ```
 
-You also need the `color-space` package installed globally via NPM, as this is
-the reference used to generate the test data. Install with:
+However, if you'll be running this or identical testing setups on other repos,
+it makes more sense to modify your luarocks environment to use these as
+defaults:
+
+```shell
+luarocks config lua_dir "$(brew --prefix)/opt/luajit"
+luarocks config lua_version 5.1
+```
+
+After those config changes, you should be able to run the test suite normally
+using `luarocks test --local` (and `eval $(luarocks path)` in your
+`.profile`/etc.
+
+## `color-space` test data
+
+The color conversion tests use the `color-space` package to generate the
+reference test data, so it need to be installed for those to work. It will
+automatically detect the package if installed globally via NPM:
 
 ```shell
 npm install -g color-space
 ```
+
+## Test development
 
 If you want LSP hints while working on tests, install and configure these
 plugins like so (example assumes you're using `lazy.nvim`):
